@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -47,11 +48,23 @@ export default async function CatalogPage() {
   href={`/product/${product.slug}`}
   className="block overflow-hidden rounded-2xl border border-neutral-200 bg-white transition hover:-translate-y-1 hover:shadow-md"
 >
-  <div className="flex aspect-[4/5] items-center justify-center bg-neutral-100">
-    <span className="text-6xl font-light text-neutral-300">
-      {product.name.charAt(0)}
-    </span>
-  </div>
+ <div className="relative aspect-4/5 overflow-hidden bg-neutral-100">
+  {product.imageUrl ? (
+    <Image
+      src={product.imageUrl}
+      alt={product.name}
+      fill
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+      className="object-cover transition duration-300 group-hover:scale-[1.02]"
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <span className="text-6xl font-light text-neutral-300">
+        {product.name.charAt(0)}
+      </span>
+    </div>
+  )}
+</div>
 
   <div className="p-5">
     <p className="text-sm text-neutral-500">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
@@ -35,11 +36,24 @@ export default async function ProductPage({
       </Link>
 
       <div className="mt-8 grid gap-12 lg:grid-cols-2">
-        <div className="flex aspect-[4/5] items-center justify-center bg-neutral-100">
-          <span className="text-8xl font-light text-neutral-300">
-            {product.name.charAt(0)}
-          </span>
-        </div>
+        <div className="relative aspect-4/5 overflow-hidden bg-neutral-100">
+  {product.imageUrl ? (
+    <Image
+      src={product.imageUrl.trim()}
+      alt={product.name}
+      fill
+      priority
+      sizes="(max-width: 1024px) 100vw, 50vw"
+      className="object-cover"
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <span className="text-8xl font-light text-neutral-300">
+        {product.name.charAt(0)}
+      </span>
+    </div>
+  )}
+</div>
 
         <div className="py-4">
           <p className="text-sm uppercase tracking-[0.15em] text-neutral-500">
