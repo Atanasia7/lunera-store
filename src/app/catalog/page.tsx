@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -41,42 +42,43 @@ export default async function CatalogPage() {
             );
 
             return (
-              <article
-                key={product.id}
-                className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
-              >
-                <div className="flex aspect-[4/5] items-center justify-center bg-neutral-100">
-                  <span className="text-6xl font-light text-neutral-300">
-                    {product.name.charAt(0)}
-                  </span>
-                </div>
+             <Link
+  key={product.id}
+  href={`/product/${product.slug}`}
+  className="block overflow-hidden rounded-2xl border border-neutral-200 bg-white transition hover:-translate-y-1 hover:shadow-md"
+>
+  <div className="flex aspect-[4/5] items-center justify-center bg-neutral-100">
+    <span className="text-6xl font-light text-neutral-300">
+      {product.name.charAt(0)}
+    </span>
+  </div>
 
-                <div className="p-5">
-                  <p className="text-sm text-neutral-500">
-                    {product.category.name}
-                  </p>
+  <div className="p-5">
+    <p className="text-sm text-neutral-500">
+      {product.category.name}
+    </p>
 
-                  <h2 className="mt-1 text-xl font-medium text-neutral-900">
-                    {product.name}
-                  </h2>
+    <h2 className="mt-1 text-xl font-medium text-neutral-900">
+      {product.name}
+    </h2>
 
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-neutral-600">
-                    {product.description}
-                  </p>
+    <p className="mt-3 line-clamp-2 text-sm leading-6 text-neutral-600">
+      {product.description}
+    </p>
 
-                  <div className="mt-5 flex items-end justify-between gap-4">
-                    <p className="text-lg font-semibold text-neutral-900">
-                      {Number(product.price).toLocaleString("uk-UA")} грн
-                    </p>
+    <div className="mt-5 flex items-end justify-between gap-4">
+      <p className="text-lg font-semibold text-neutral-900">
+        {Number(product.price).toLocaleString("uk-UA")} грн
+      </p>
 
-                    <p className="text-xs text-neutral-500">
-                      {totalStock > 0
-                        ? `В наявності: ${totalStock}`
-                        : "Немає в наявності"}
-                    </p>
-                  </div>
-                </div>
-              </article>
+      <p className="text-xs text-neutral-500">
+        {totalStock > 0
+          ? `В наявності: ${totalStock}`
+          : "Немає в наявності"}
+      </p>
+    </div>
+  </div>
+</Link>
             );
           })}
         </div>
