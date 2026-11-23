@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 type OrderRequestItem = {
@@ -19,6 +20,8 @@ type OrderRequestBody = {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+
     const body =
       (await request.json()) as OrderRequestBody;
 
@@ -26,7 +29,7 @@ export async function POST(request: Request) {
       body.customerName?.trim() ?? "";
 
     const email =
-      body.email?.trim() ?? "";
+      body.email?.trim().toLowerCase() ?? "";
 
     const phone =
       body.phone?.trim() ?? "";
@@ -70,6 +73,25 @@ export async function POST(request: Request) {
           status: 400,
         },
       );
+    }
+
+    let userId: string | null = null;
+
+    if (session?.user?.email) {
+      const currentUser =
+        await prisma.user.findUnique({
+          where: {
+            email:
+              session.user.email.toLowerCase(),
+          },
+
+          select: {
+            id: true,
+          },
+        });
+
+      userId =
+        currentUser?.id ?? null;
     }
 
     const variants =
@@ -163,6 +185,8 @@ export async function POST(request: Request) {
           const createdOrder =
             await tx.order.create({
               data: {
+                userId,
+
                 customerName,
                 email,
                 phone,
@@ -183,18 +207,31 @@ export async function POST(request: Request) {
             });
 
           for (const item of body.items!) {
-            await tx.productVariant.update({
-              where: {
-                id: item.variantId,
-              },
+            const update =
+              await tx.productVariant.updateMany({
+                where: {
+                  id:
+                    item.variantId,
 
-              data: {
-                stock: {
-                  decrement:
-                    item.quantity,
+                  stock: {
+                    gte:
+                      item.quantity,
+                  },
                 },
-              },
-            });
+
+                data: {
+                  stock: {
+                    decrement:
+                      item.quantity,
+                  },
+                },
+              });
+
+            if (update.count !== 1) {
+              throw new Error(
+                "Недостатній залишок товару.",
+              );
+            }
           }
 
           return createdOrder;
@@ -203,15 +240,23 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        orderId: order.id,
+        orderId:
+          order.id,
+
         total,
+
+        linkedToAccount:
+          Boolean(userId),
       },
       {
         status: 201,
       },
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Order creation error:",
+      error,
+    );
 
     return NextResponse.json(
       {
