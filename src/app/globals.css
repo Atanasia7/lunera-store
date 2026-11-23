@@ -1,5 +1,79 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+
+  --background: #f8f5fa;
+  --background-soft: #f2edf6;
+
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: #ffffff;
+  --surface-soft: rgba(242, 237, 246, 0.78);
+
+  --foreground: #24152f;
+  --muted: #756b7c;
+
+  --accent: #a879c5;
+  --accent-hover: #734296;
+  --accent-light: #dcc8ec;
+  --accent-soft: #efe5f5;
+
+  --border: rgba(255, 255, 255, 0.65);
+  --border-muted: rgba(36, 21, 47, 0.1);
+
+  --shadow:
+    0 20px 50px rgba(71, 48, 84, 0.08);
+
+  --glass-blur: 20px;
+  --radius-card: 24px;
+  --radius-control: 16px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #0b0a0e;
+  --background-soft: #111015;
+
+  --surface: rgba(24, 22, 29, 0.78);
+  --surface-strong: #19171e;
+  --surface-soft: rgba(31, 28, 36, 0.82);
+
+  --foreground: #f5f1f7;
+  --muted: #aaa1af;
+
+  --accent: #a879c5;
+  --accent-hover: #bc91d4;
+  --accent-light: #6f4d80;
+  --accent-soft: rgba(168, 121, 197, 0.12);
+
+  --border: rgba(255, 255, 255, 0.1);
+  --border-muted: rgba(255, 255, 255, 0.08);
+
+  --shadow:
+    0 22px 60px rgba(0, 0, 0, 0.32);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-soft: var(--background-soft);
+
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-soft: var(--surface-soft);
+
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-light: var(--accent-light);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -10,9 +84,21 @@ html {
 
 body {
   margin: 0;
-  background: #ffffff;
-  color: #171717;
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 85% 5%,
+      color-mix(in srgb, var(--accent) 9%, transparent),
+      transparent 28%
+    ),
+    var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter, Arial, Helvetica, sans-serif;
+
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 a {
@@ -25,4 +111,85 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--accent-light);
+  color: var(--foreground);
+}
+
+/* Единый контейнер страниц */
+.page-shell {
+  width: min(100% - 48px, 1440px);
+  margin-inline: auto;
+}
+
+/* Каноническая glass-поверхность */
+.glass-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* Glass для кнопок, input и небольших контролов */
+.glass-control {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Редакционные заголовки Lunera */
+.editorial-title {
+  font-family:
+    Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+.filter-option {
+  display: flex;
+  min-width: 44px;
+  height: 40px;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 12px;
+
+  color: var(--muted);
+  background: var(--surface);
+
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+
+  font-size: 14px;
+
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.filter-option:hover {
+  border-color: var(--accent);
+}
+
+.filter-option-input:checked + .filter-option {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.filter-option-input:focus-visible + .filter-option {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
