@@ -23,7 +23,15 @@ export const {
   },
 
   providers: [
-    Google,
+    Google({
+      clientId:
+        process.env.AUTH_GOOGLE_ID!,
+      clientSecret:
+        process.env.AUTH_GOOGLE_SECRET!,
+
+      allowDangerousEmailAccountLinking:
+        true,
+    }),
 
     Credentials({
       credentials: {
@@ -40,12 +48,16 @@ export const {
 
       async authorize(credentials) {
         const email =
-          typeof credentials.email === "string"
-            ? credentials.email.trim().toLowerCase()
+          typeof credentials.email ===
+          "string"
+            ? credentials.email
+                .trim()
+                .toLowerCase()
             : "";
 
         const password =
-          typeof credentials.password === "string"
+          typeof credentials.password ===
+          "string"
             ? credentials.password
             : "";
 
@@ -60,7 +72,10 @@ export const {
             },
           });
 
-        if (!user || !user.passwordHash) {
+        if (
+          !user ||
+          !user.passwordHash
+        ) {
           return null;
         }
 
@@ -83,15 +98,45 @@ export const {
 
         return {
           id: user.id,
+
           name:
             user.name ||
             fullName ||
             user.email ||
             "Lunera User",
+
           email: user.email,
+
           image: user.image,
         };
       },
     }),
   ],
+
+  callbacks: {
+    async signIn({
+      account,
+      profile,
+    }) {
+      if (
+        account?.provider ===
+        "google"
+      ) {
+        const googleProfile =
+          profile as
+            | {
+                email?: string | null;
+                email_verified?: boolean;
+              }
+            | undefined;
+
+        return Boolean(
+          googleProfile?.email &&
+            googleProfile.email_verified,
+        );
+      }
+
+      return true;
+    },
+  },
 });

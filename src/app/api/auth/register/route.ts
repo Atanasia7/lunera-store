@@ -3,7 +3,7 @@ import { hash } from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
 
-type RegisterBody = {
+type RegisterRequestBody = {
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -11,10 +11,12 @@ type RegisterBody = {
   password?: string;
 };
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+) {
   try {
     const body =
-      (await request.json()) as RegisterBody;
+      (await request.json()) as RegisterRequestBody;
 
     const firstName =
       body.firstName?.trim() ?? "";
@@ -50,9 +52,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (
-      !email.includes("@") ||
-      !email.includes(".")
+      !emailPattern.test(email)
     ) {
       return NextResponse.json(
         {
@@ -65,7 +69,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 8) {
+    if (
+      password.length < 8
+    ) {
       return NextResponse.json(
         {
           error:
@@ -82,13 +88,17 @@ export async function POST(request: Request) {
         where: {
           email,
         },
+
+        select: {
+          id: true,
+        },
       });
 
     if (existingUser) {
       return NextResponse.json(
         {
           error:
-            "Користувач з такою електронною поштою вже існує.",
+            "Обліковий запис з цією електронною поштою вже існує. Увійдіть до нього. Якщо ви створили акаунт через Google, скористайтеся входом через Google та створіть пароль в особистому кабінеті.",
         },
         {
           status: 409,
@@ -97,32 +107,36 @@ export async function POST(request: Request) {
     }
 
     const passwordHash =
-      await hash(password, 12);
+      await hash(
+        password,
+        12,
+      );
 
     const user =
       await prisma.user.create({
         data: {
           firstName,
           lastName,
+
           name: `${firstName} ${lastName}`,
+
           email,
+
           phone:
             phone || null,
+
           passwordHash,
         },
 
         select: {
           id: true,
-          firstName: true,
-          lastName: true,
           email: true,
         },
       });
 
     return NextResponse.json(
       {
-        message:
-          "Реєстрацію успішно завершено.",
+        success: true,
         user,
       },
       {
@@ -138,7 +152,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Не вдалося створити обліковий запис.",
+          "Не вдалося створити акаунт.",
       },
       {
         status: 500,

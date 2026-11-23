@@ -1,32 +1,89 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import {
   Heart,
-  Mail,
   Package,
-  Phone,
   ShoppingBag,
-  User,
+  UserRound,
 } from "lucide-react";
 
-import LogoutButton from "@/components/LogoutButton";
+import { redirect } from "next/navigation";
+
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+import LogoutButton from "@/components/LogoutButton";
+import PasswordManager from "@/components/PasswordManager";
+
+export const dynamic =
+  "force-dynamic";
+
+function formatPrice(
+  value: unknown,
+) {
+  return new Intl.NumberFormat(
+    "uk-UA",
+    {
+      style: "currency",
+      currency: "UAH",
+      maximumFractionDigits: 0,
+    },
+  ).format(Number(value));
+}
+
+function formatDate(
+  date: Date,
+) {
+  return new Intl.DateTimeFormat(
+    "uk-UA",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    },
+  ).format(date);
+}
+
+function getStatusLabel(
+  status: string,
+) {
+  const statuses: Record<
+    string,
+    string
+  > = {
+    PENDING: "Нове",
+    CONFIRMED:
+      "Підтверджено",
+    PROCESSING:
+      "В обробці",
+    SHIPPED: "Відправлено",
+    DELIVERED: "Доставлено",
+    CANCELLED: "Скасовано",
+  };
+
+  return (
+    statuses[status] ??
+    status
+  );
+}
 
 export default async function AccountPage() {
-  const session = await auth();
+  const session =
+    await auth();
 
-  if (!session?.user?.email) {
+  const email =
+    session?.user?.email
+      ?.trim()
+      .toLowerCase();
+
+  if (!email) {
     redirect("/login");
   }
 
   const user =
     await prisma.user.findUnique({
       where: {
-        email: session.user.email,
+        email,
       },
 
       include: {
@@ -48,258 +105,270 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
+  const fullName = [
+    user.firstName,
+    user.lastName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const displayName =
+    fullName ||
     user.name ||
-    [user.firstName, user.lastName]
-      .filter(Boolean)
-      .join(" ") ||
     user.email ||
-    "Lunera User";
+    "Користувач";
+
+  const initials =
+    displayName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) =>
+        part.charAt(0),
+      )
+      .join("")
+      .toUpperCase() || "L";
 
   return (
-    <main className="page-shell py-10">
-      {/* Breadcrumbs */}
-
-      <nav className="flex items-center gap-2 text-sm text-muted">
-        <Link
-          href="/"
-          className="transition hover:text-foreground"
-        >
-          Головна
-        </Link>
-
-        <span>/</span>
-
-        <span className="text-foreground">
-          Особистий кабінет
-        </span>
-      </nav>
-
-      {/* Heading */}
-
-      <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-hover">
-            Lunera account
-          </p>
-
-          <h1 className="editorial-title mt-2 text-5xl text-foreground md:text-6xl">
-            Особистий кабінет
-          </h1>
-
-          <p className="mt-3 text-sm text-muted">
-            Вітаємо, {displayName}.
-          </p>
-        </div>
-
-        <LogoutButton />
-      </div>
-
-      {/* Main */}
-
-      <div className="mt-8 grid items-start gap-8 xl:grid-cols-[300px_1fr]">
-        {/* Sidebar */}
-
-        <aside className="glass-panel p-6">
-          <div className="flex items-center gap-4 border-b border-border-muted pb-6">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent-hover">
-              <User
-                className="h-6 w-6"
-                strokeWidth={1.7}
-              />
-            </div>
-
-            <div className="min-w-0">
-              <p className="truncate font-semibold text-foreground">
-                {displayName}
-              </p>
-
-              <p className="mt-1 truncate text-xs text-muted">
-                {user.email}
-              </p>
-            </div>
-          </div>
-
-          <nav className="mt-5 space-y-2">
-            <div className="rounded-xl bg-accent-soft px-4 py-3 text-sm font-medium text-foreground">
-              Особисті дані
-            </div>
-
-            <Link
-              href="/favorites"
-              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted transition hover:bg-accent-soft hover:text-foreground"
-            >
-              <Heart className="h-4 w-4" />
-              Обране
-            </Link>
-
-            <Link
-              href="/cart"
-              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted transition hover:bg-accent-soft hover:text-foreground"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Кошик
-            </Link>
-          </nav>
-        </aside>
-
-        <div className="space-y-6">
-          {/* Profile data */}
-
-          <section className="glass-panel p-7">
-            <h2 className="editorial-title text-3xl text-foreground">
-              Особисті дані
-            </h2>
-
-            <p className="mt-2 text-sm text-muted">
-              Дані вашого облікового запису Lunera.
+    <main className="page-shell py-10 sm:py-14">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-sm uppercase tracking-[0.18em] text-muted">
+              Особистий кабінет
             </p>
 
-            <div className="mt-7 grid gap-4 md:grid-cols-2">
-              <ProfileItem
-                icon={<User />}
-                label="Ім'я"
-                value={
-                  [user.firstName, user.lastName]
-                    .filter(Boolean)
-                    .join(" ") || "Не вказано"
-                }
-              />
+            <h1 className="editorial-title mt-2 text-4xl text-foreground sm:text-5xl">
+              Мій акаунт
+            </h1>
+          </div>
 
-              <ProfileItem
-                icon={<Mail />}
-                label="Електронна пошта"
-                value={user.email ?? "Не вказано"}
-              />
+          <LogoutButton />
+        </div>
 
-              <ProfileItem
-                icon={<Phone />}
-                label="Телефон"
-                value={user.phone ?? "Не вказано"}
-              />
+        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+          <section className="rounded-[28px] border border-border bg-surface p-6 shadow-sm sm:p-8">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent-soft text-lg font-semibold text-accent-hover">
+                {initials}
+              </div>
 
-              <ProfileItem
-                icon={<User />}
-                label="Тип акаунта"
-                value={
-                  user.role === "ADMIN"
-                    ? "Адміністратор"
-                    : "Користувач"
-                }
-              />
-            </div>
-          </section>
-
-          {/* Orders */}
-
-          <section className="glass-panel p-7">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="editorial-title text-3xl text-foreground">
-                  Мої замовлення
+              <div className="min-w-0">
+                <h2 className="truncate text-xl font-semibold text-foreground">
+                  {displayName}
                 </h2>
 
-                <p className="mt-2 text-sm text-muted">
-                  Останні замовлення вашого акаунта.
+                <p className="mt-1 truncate text-sm text-muted">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-5">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                  Ім&apos;я
+                </p>
+
+                <p className="mt-1 text-sm text-foreground">
+                  {displayName}
                 </p>
               </div>
 
-              <Package
-                className="h-6 w-6 text-accent-hover"
-                strokeWidth={1.6}
-              />
-            </div>
-
-            {user.orders.length === 0 ? (
-              <div className="glass-control mt-6 px-5 py-6 text-center">
-                <p className="text-sm font-medium text-foreground">
-                  Замовлень поки немає
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                  Email
                 </p>
 
-                <p className="mt-2 text-xs text-muted">
-                  Після оформлення покупки вона з&apos;явиться тут.
+                <p className="mt-1 break-all text-sm text-foreground">
+                  {user.email}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                  Телефон
+                </p>
+
+                <p className="mt-1 text-sm text-foreground">
+                  {user.phone ||
+                    "Не вказано"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                  Тип акаунта
+                </p>
+
+                <p className="mt-1 text-sm text-foreground">
+                  {user.role ===
+                  "ADMIN"
+                    ? "Адміністратор"
+                    : "Користувач"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 grid gap-3">
+              <Link
+                href="/favorites"
+                className="glass-control flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground transition hover:border-accent"
+              >
+                <Heart
+                  className="h-4 w-4"
+                  strokeWidth={1.7}
+                />
+
+                Обрані товари
+              </Link>
+
+              <Link
+                href="/cart"
+                className="glass-control flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground transition hover:border-accent"
+              >
+                <ShoppingBag
+                  className="h-4 w-4"
+                  strokeWidth={1.7}
+                />
+
+                Кошик
+              </Link>
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-border bg-surface p-6 shadow-sm sm:p-8">
+            <div className="flex items-center gap-3">
+              <Package
+                className="h-5 w-5 text-accent-hover"
+                strokeWidth={1.7}
+              />
+
+              <h2 className="text-xl font-semibold text-foreground">
+                Мої замовлення
+              </h2>
+            </div>
+
+            {user.orders.length ===
+            0 ? (
+              <div className="mt-8 rounded-3xl border border-border bg-background/40 p-8 text-center">
+                <Package
+                  className="mx-auto h-8 w-8 text-muted"
+                  strokeWidth={1.5}
+                />
+
+                <h3 className="mt-4 font-medium text-foreground">
+                  Замовлень поки немає
+                </h3>
+
+                <p className="mt-2 text-sm text-muted">
+                  Ваші нові замовлення
+                  будуть відображатися
+                  тут.
                 </p>
 
                 <Link
                   href="/catalog"
-                  className="mt-4 inline-block text-sm font-medium text-accent-hover"
+                  className="mt-5 inline-flex rounded-2xl bg-accent px-5 py-2.5 text-sm font-medium text-white"
                 >
-                  Перейти до каталогу →
+                  До каталогу
                 </Link>
               </div>
             ) : (
-              <div className="mt-6 space-y-3">
-                {user.orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="glass-control flex flex-wrap items-center justify-between gap-4 p-5"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Замовлення #
-                        {order.id
-                          .slice(0, 8)
-                          .toUpperCase()}
-                      </p>
+              <div className="mt-6 space-y-4">
+                {user.orders.map(
+                  (order) => (
+                    <article
+                      key={order.id}
+                      className="rounded-3xl border border-border bg-background/40 p-5"
+                    >
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            Замовлення #
+                            {order.id
+                              .slice(
+                                0,
+                                8,
+                              )
+                              .toUpperCase()}
+                          </p>
 
-                      <p className="mt-1 text-xs text-muted">
-                        {order.createdAt.toLocaleDateString(
-                          "uk-UA",
-                        )}
-                        {" · "}
-                        {order.items.length} товарів
-                      </p>
-                    </div>
+                          <p className="mt-1 text-xs text-muted">
+                            {formatDate(
+                              order.createdAt,
+                            )}
+                          </p>
+                        </div>
 
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">
-                        {Number(
-                          order.total,
-                        ).toLocaleString(
-                          "uk-UA",
-                        )}{" "}
-                        грн
-                      </p>
+                        <div className="sm:text-right">
+                          <p className="text-sm font-semibold text-foreground">
+                            {formatPrice(
+                              order.total,
+                            )}
+                          </p>
 
-                      <p className="mt-1 text-xs text-accent-hover">
-                        {order.status}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                          <p className="mt-1 text-xs text-accent-hover">
+                            {getStatusLabel(
+                              order.status,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t border-border pt-4">
+                        <p className="text-xs text-muted">
+                          Товарів:{" "}
+                          {order.items.reduce(
+                            (
+                              total,
+                              item,
+                            ) =>
+                              total +
+                              item.quantity,
+                            0,
+                          )}
+                        </p>
+                      </div>
+                    </article>
+                  ),
+                )}
               </div>
             )}
           </section>
         </div>
+
+        <div className="mt-6">
+          <PasswordManager
+            hasPassword={Boolean(
+              user.passwordHash,
+            )}
+          />
+        </div>
+
+        <div className="mt-6 rounded-[28px] border border-border bg-surface p-6 shadow-sm sm:p-8">
+          <div className="flex items-center gap-3">
+            <UserRound
+              className="h-5 w-5 text-accent-hover"
+              strokeWidth={1.7}
+            />
+
+            <div>
+              <h2 className="font-semibold text-foreground">
+                Безпека акаунта
+              </h2>
+
+              <p className="mt-1 text-sm text-muted">
+                Один email відповідає
+                одному акаунту Lunera.
+                До нього можна
+                підключити декілька
+                способів входу.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
-  );
-}
-
-function ProfileItem({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="glass-control flex items-center gap-4 p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-hover [&>svg]:h-4 [&>svg]:w-4">
-        {icon}
-      </div>
-
-      <div className="min-w-0">
-        <p className="text-xs text-muted">
-          {label}
-        </p>
-
-        <p className="mt-1 truncate text-sm font-medium text-foreground">
-          {value}
-        </p>
-      </div>
-    </div>
   );
 }
