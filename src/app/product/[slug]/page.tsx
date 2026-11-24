@@ -10,6 +10,7 @@ import {
 
 import FavoriteButton from "@/components/FavoriteButton";
 import ProductCard from "@/components/ProductCard";
+import ProductDetailsTabs from "@/components/ProductDetailsTabs";
 import ProductGallery from "@/components/ProductGallery";
 import ProductOptions from "@/components/ProductOptions";
 import { prisma } from "@/lib/prisma";
@@ -18,9 +19,7 @@ import { getProductPhotos } from "@/lib/product-photos";
 export const dynamic = "force-dynamic";
 
 type ProductPageProps = {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 };
 
 function getShortDescription(description: string) {
@@ -31,6 +30,7 @@ function getShortDescription(description: string) {
   }
 
   const match = clean.match(/^.*?[.!?](?:\s|$)/);
+
   return match?.[0].trim() ?? clean;
 }
 
@@ -40,12 +40,18 @@ export default async function ProductPage({
   const { slug } = await params;
 
   const product = await prisma.product.findUnique({
-    where: { slug },
+    where: {
+      slug,
+    },
     include: {
       category: true,
       images: {
-        orderBy: { position: "asc" },
-        select: { url: true },
+        orderBy: {
+          position: "asc",
+        },
+        select: {
+          url: true,
+        },
       },
       variants: true,
     },
@@ -58,16 +64,25 @@ export default async function ProductPage({
   const recommendations = await prisma.product.findMany({
     where: {
       isActive: true,
-      id: { not: product.id },
+      id: {
+        not: product.id,
+      },
+      categoryId: product.categoryId,
     },
     include: {
       images: {
-        orderBy: { position: "asc" },
-        select: { url: true },
+        orderBy: {
+          position: "asc",
+        },
+        select: {
+          url: true,
+        },
       },
       variants: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: {
+      createdAt: "desc",
+    },
     take: 4,
   });
 
@@ -79,6 +94,17 @@ export default async function ProductPage({
       product.variants.map((variant) => variant.color),
     ),
   ];
+
+  const shortDescription = getShortDescription(
+    product.description,
+  );
+
+  const variants = product.variants.map((variant) => ({
+    id: variant.id,
+    size: variant.size,
+    color: variant.color,
+    stock: variant.stock,
+  }));
 
   const preparedRecommendations = recommendations.map(
     (item) => ({
@@ -95,21 +121,10 @@ export default async function ProductPage({
     }),
   );
 
-  const variants = product.variants.map((variant) => ({
-    id: variant.id,
-    size: variant.size,
-    color: variant.color,
-    stock: variant.stock,
-  }));
-
-  const shortDescription = getShortDescription(
-    product.description,
-  );
-
   return (
-    <main className="page-shell py-8">
+    <main className="page-shell py-6 sm:py-8">
       <nav
-        className="flex flex-wrap items-center gap-2 text-sm text-muted"
+        className="flex flex-wrap items-center gap-2 text-xs text-muted sm:text-sm"
         aria-label="Хлібні крихти"
       >
         <Link
@@ -144,28 +159,28 @@ export default async function ProductPage({
         </span>
       </nav>
 
-      <section className="mt-8 grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="mt-6 grid items-start gap-8 lg:grid-cols-[1.08fr_0.92fr] xl:gap-12">
         <ProductGallery
           name={product.name}
           photos={photos}
         />
 
-        <div className="py-2">
+        <div className="glass-panel p-6 sm:p-8 lg:sticky lg:top-28">
           <div className="flex items-start justify-between gap-5">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-hover">
                 {product.category.name}
               </p>
 
-              <h1 className="editorial-title mt-3 text-5xl leading-tight text-foreground md:text-6xl">
+              <h1 className="editorial-title mt-3 text-4xl leading-tight text-foreground sm:text-5xl">
                 {product.name}
               </h1>
 
-              <p className="mt-5 text-3xl font-semibold text-foreground">
+              <p className="mt-4 text-2xl font-semibold text-foreground sm:text-3xl">
                 {Number(product.price).toLocaleString(
                   "uk-UA",
                 )}{" "}
-                грн
+                ₴
               </p>
             </div>
 
@@ -183,12 +198,12 @@ export default async function ProductPage({
           </div>
 
           {shortDescription && (
-            <p className="mt-7 max-w-2xl text-base leading-7 text-muted">
+            <p className="mt-6 text-sm leading-7 text-muted sm:text-base">
               {shortDescription}
             </p>
           )}
 
-          <div className="mt-9">
+          <div className="mt-8 border-t border-border-muted pt-7">
             <ProductOptions
               product={{
                 id: product.id,
@@ -200,55 +215,14 @@ export default async function ProductPage({
               variants={variants}
             />
           </div>
-
-          <div className="mt-10 space-y-3">
-            <details className="glass-control group px-5 py-4">
-              <summary className="cursor-pointer list-none font-medium text-foreground">
-                Склад та догляд
-              </summary>
-
-              <p className="mt-4 text-sm leading-6 text-muted">
-                Делікатний догляд відповідно до
-                рекомендацій на етикетці. Рекомендується
-                прання при низькій температурі.
-              </p>
-            </details>
-
-            <details className="glass-control group px-5 py-4">
-              <summary className="cursor-pointer list-none font-medium text-foreground">
-                Доставка і повернення
-              </summary>
-
-              <p className="mt-4 text-sm leading-6 text-muted">
-                Доставка по Україні. Повернення товару
-                можливе протягом 14 днів.
-              </p>
-            </details>
-          </div>
         </div>
       </section>
 
-      <section className="glass-panel mt-10 overflow-hidden">
-        <div className="grid gap-8 p-7 md:p-10 lg:grid-cols-[0.35fr_0.65fr]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-hover">
-              Lunera
-            </p>
+      <ProductDetailsTabs
+        description={product.description}
+      />
 
-            <h2 className="editorial-title mt-3 text-4xl text-foreground md:text-5xl">
-              Про товар
-            </h2>
-          </div>
-
-          <div className="max-w-3xl">
-            <p className="whitespace-pre-line text-base leading-8 text-muted">
-              {product.description}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="glass-panel mt-8 grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="glass-panel mt-8 grid gap-1 px-3 py-3 sm:grid-cols-2 xl:grid-cols-4">
         <ProductBenefit
           icon={<Truck />}
           title="Швидка доставка"
@@ -258,7 +232,7 @@ export default async function ProductPage({
         <ProductBenefit
           icon={<RotateCcw />}
           title="Легке повернення"
-          text="протягом 14 днів"
+          text="зрозумілі умови"
         />
 
         <ProductBenefit
@@ -275,23 +249,26 @@ export default async function ProductPage({
       </section>
 
       {preparedRecommendations.length > 0 && (
-        <section className="py-20">
+        <section className="py-16 sm:py-20">
           <div className="mb-8 flex items-end justify-between gap-6">
-            <h2 className="editorial-title text-4xl text-foreground md:text-5xl">
+            <h2 className="editorial-title max-w-3xl text-4xl text-foreground sm:text-5xl">
               Вам також може сподобатися
             </h2>
 
             <Link
               href="/catalog"
-              className="shrink-0 text-sm font-medium text-accent-hover"
+              className="hidden shrink-0 text-sm font-semibold text-accent-hover transition hover:text-accent sm:block"
             >
               Переглянути всі →
             </Link>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {preparedRecommendations.map((item) => (
-              <ProductCard key={item.id} product={item} />
+              <ProductCard
+                key={item.id}
+                product={item}
+              />
             ))}
           </div>
         </section>
@@ -310,7 +287,7 @@ function ProductBenefit({
   text: string;
 }) {
   return (
-    <div className="flex items-center gap-4 px-5 py-4">
+    <div className="flex items-center gap-4 rounded-2xl px-4 py-4 transition hover:bg-accent-soft">
       <div className="glass-control flex h-11 w-11 shrink-0 items-center justify-center text-accent-hover [&>svg]:h-5 [&>svg]:w-5">
         {icon}
       </div>

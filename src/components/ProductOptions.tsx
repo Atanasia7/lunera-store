@@ -268,12 +268,14 @@ export default function ProductOptions({
             Розмір
           </p>
 
-          <button
-            type="button"
-            className="text-sm text-accent-hover underline underline-offset-4"
-          >
-            Таблиця розмірів
-          </button>
+          <a
+  href="/images/size-guide.png"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-sm text-accent-hover underline underline-offset-4 transition hover:text-accent"
+>
+  Таблиця розмірів
+</a>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
