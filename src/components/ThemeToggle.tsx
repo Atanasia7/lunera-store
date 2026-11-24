@@ -16,10 +16,13 @@ export default function ThemeToggle() {
           "lunera-theme",
         );
 
-      document.documentElement.dataset.theme =
+      const initialTheme: Theme =
         savedTheme === "dark"
           ? "dark"
           : "light";
+
+      document.documentElement.dataset.theme =
+        initialTheme;
     } catch {
       document.documentElement.dataset.theme =
         "light";
@@ -27,11 +30,9 @@ export default function ThemeToggle() {
   }, []);
 
   function toggleTheme() {
-    const root =
-      document.documentElement;
-
     const currentTheme: Theme =
-      root.dataset.theme === "dark"
+      document.documentElement.dataset.theme ===
+      "dark"
         ? "dark"
         : "light";
 
@@ -40,7 +41,7 @@ export default function ThemeToggle() {
         ? "dark"
         : "light";
 
-    root.dataset.theme =
+    document.documentElement.dataset.theme =
       nextTheme;
 
     localStorage.setItem(
@@ -58,19 +59,14 @@ export default function ThemeToggle() {
       title="Перемкнути тему"
     >
       <Sun
-        className="theme-switch-icon theme-switch-sun"
-        strokeWidth={1.8}
+        className="theme-switch-sun"
+        strokeWidth={1.9}
         aria-hidden="true"
       />
 
       <Moon
-        className="theme-switch-icon theme-switch-moon"
-        strokeWidth={1.8}
-        aria-hidden="true"
-      />
-
-      <span
-        className="theme-switch-thumb"
+        className="theme-switch-moon"
+        strokeWidth={1.9}
         aria-hidden="true"
       />
     </button>
