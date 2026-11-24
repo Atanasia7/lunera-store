@@ -2,14 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
 import {
   CheckCircle2,
   LockKeyhole,
   MapPin,
   PackageCheck,
 } from "lucide-react";
+
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 
@@ -20,6 +23,16 @@ type CreatedOrder = {
   total: number;
 };
 
+type ProfileResponse = {
+  authenticated: boolean;
+
+  user: {
+    customerName: string;
+    email: string;
+    phone: string;
+  } | null;
+};
+
 export default function CheckoutPage() {
   const {
     items,
@@ -28,14 +41,105 @@ export default function CheckoutPage() {
     clearCart,
   } = useCart();
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
+
+  const [
+    isProfileLoading,
+    setIsProfileLoading,
+  ] = useState(true);
 
   const [error, setError] =
     useState("");
 
-  const [createdOrder, setCreatedOrder] =
-    useState<CreatedOrder | null>(null);
+  const [
+    createdOrder,
+    setCreatedOrder,
+  ] = useState<CreatedOrder | null>(
+    null,
+  );
+
+  const [
+    customerName,
+    setCustomerName,
+  ] = useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [phone, setPhone] =
+    useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      try {
+        const response =
+          await fetch(
+            "/api/account/profile",
+            {
+              method: "GET",
+
+              cache: "no-store",
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data =
+          (await response.json()) as ProfileResponse;
+
+        if (
+          cancelled ||
+          !data.authenticated ||
+          !data.user
+        ) {
+          return;
+        }
+
+        setCustomerName(
+          (current) =>
+            current ||
+            data.user?.customerName ||
+            "",
+        );
+
+        setEmail(
+          (current) =>
+            current ||
+            data.user?.email ||
+            "",
+        );
+
+        setPhone(
+          (current) =>
+            current ||
+            data.user?.phone ||
+            "",
+        );
+      } catch (profileError) {
+        console.error(
+          "Profile loading error:",
+          profileError,
+        );
+      } finally {
+        if (!cancelled) {
+          setIsProfileLoading(false);
+        }
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -49,56 +153,60 @@ export default function CheckoutPage() {
     setError("");
     setIsSubmitting(true);
 
-    const formData = new FormData(
-      event.currentTarget,
-    );
+    const formData =
+      new FormData(
+        event.currentTarget,
+      );
 
     try {
-      const response = await fetch(
-        "/api/orders",
-        {
-          method: "POST",
+      const response =
+        await fetch(
+          "/api/orders",
+          {
+            method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              customerName:
+                formData.get(
+                  "customerName",
+                ),
+
+              email:
+                formData.get("email"),
+
+              phone:
+                formData.get("phone"),
+
+              city:
+                formData.get("city"),
+
+              deliveryAddress:
+                formData.get(
+                  "deliveryAddress",
+                ),
+
+              comment:
+                formData.get(
+                  "comment",
+                ),
+
+              items: items.map(
+                (item) => ({
+                  variantId:
+                    item.variantId,
+
+                  quantity:
+                    item.quantity,
+                }),
+              ),
+            }),
           },
-
-          body: JSON.stringify({
-            customerName:
-              formData.get(
-                "customerName",
-              ),
-
-            email:
-              formData.get("email"),
-
-            phone:
-              formData.get("phone"),
-
-            city:
-              formData.get("city"),
-
-            deliveryAddress:
-              formData.get(
-                "deliveryAddress",
-              ),
-
-            comment:
-              formData.get("comment"),
-
-            items: items.map(
-              (item) => ({
-                variantId:
-                  item.variantId,
-
-                quantity:
-                  item.quantity,
-              }),
-            ),
-          }),
-        },
-      );
+        );
 
       const result =
         await response.json();
@@ -112,13 +220,16 @@ export default function CheckoutPage() {
 
       setCreatedOrder({
         id: result.orderId,
-        total: Number(result.total),
+        total: Number(
+          result.total,
+        ),
       });
 
       clearCart();
     } catch (submitError) {
       setError(
-        submitError instanceof Error
+        submitError instanceof
+          Error
           ? submitError.message
           : "Не вдалося створити замовлення.",
       );
@@ -201,7 +312,8 @@ export default function CheckoutPage() {
           />
 
           <h1 className="editorial-title mt-5 text-4xl text-foreground">
-            Немає товарів для оформлення
+            Немає товарів для
+            оформлення
           </h1>
 
           <p className="mt-3 text-sm text-muted">
@@ -263,15 +375,31 @@ export default function CheckoutPage() {
       >
         <div className="space-y-5">
           <section className="glass-panel p-7">
-            <h2 className="editorial-title text-3xl text-foreground">
-              1. Контактна інформація
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="editorial-title text-3xl text-foreground">
+                1. Контактна інформація
+              </h2>
+
+              {!isProfileLoading &&
+                (customerName ||
+                  email ||
+                  phone) && (
+                  <span className="rounded-full border border-accent/20 bg-accent-soft px-3 py-1.5 text-xs text-accent-hover">
+                    Дані з вашого
+                    акаунта
+                  </span>
+                )}
+            </div>
 
             <div className="mt-7 grid gap-5 md:grid-cols-2">
               <CheckoutField
                 label="Ім'я та прізвище"
                 name="customerName"
                 placeholder="Олена Шевченко"
+                value={customerName}
+                onChange={
+                  setCustomerName
+                }
               />
 
               <CheckoutField
@@ -279,6 +407,8 @@ export default function CheckoutPage() {
                 name="phone"
                 type="tel"
                 placeholder="+380 67 123 45 67"
+                value={phone}
+                onChange={setPhone}
               />
 
               <div className="md:col-span-2">
@@ -287,6 +417,10 @@ export default function CheckoutPage() {
                   name="email"
                   type="email"
                   placeholder="example@email.com"
+                  value={email}
+                  onChange={
+                    setEmail
+                  }
                 />
               </div>
             </div>
@@ -309,8 +443,9 @@ export default function CheckoutPage() {
                 </p>
 
                 <p className="mt-1 text-xs text-muted">
-                  Вкажіть місто та адресу
-                  або номер відділення.
+                  Вкажіть місто та
+                  адресу або номер
+                  відділення.
                 </p>
               </div>
             </div>
@@ -355,7 +490,8 @@ export default function CheckoutPage() {
 
               <p className="mt-1 text-xs text-muted">
                 Оплата після отримання
-                та перевірки замовлення.
+                та перевірки
+                замовлення.
               </p>
             </div>
           </section>
@@ -487,11 +623,19 @@ function CheckoutField({
   name,
   type = "text",
   placeholder,
+  value,
+  onChange,
 }: {
   label: string;
   name: string;
   type?: string;
   placeholder: string;
+
+  value?: string;
+
+  onChange?: (
+    value: string,
+  ) => void;
 }) {
   return (
     <label className="block">
@@ -504,6 +648,15 @@ function CheckoutField({
         name={name}
         required
         placeholder={placeholder}
+        value={value}
+        onChange={
+          onChange
+            ? (event) =>
+                onChange(
+                  event.target.value,
+                )
+            : undefined
+        }
         className="glass-control h-12 w-full px-4 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent"
       />
     </label>

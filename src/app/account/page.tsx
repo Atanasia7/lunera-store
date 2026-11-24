@@ -4,7 +4,6 @@ import {
   Heart,
   Package,
   ShoppingBag,
-  UserRound,
 } from "lucide-react";
 
 import { redirect } from "next/navigation";
@@ -14,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 import LogoutButton from "@/components/LogoutButton";
 import PasswordManager from "@/components/PasswordManager";
+import ProfileManager from "@/components/ProfileManager";
 
 export const dynamic =
   "force-dynamic";
@@ -52,10 +52,8 @@ function getStatusLabel(
     string
   > = {
     PENDING: "Нове",
-    CONFIRMED:
-      "Підтверджено",
-    PROCESSING:
-      "В обробці",
+    CONFIRMED: "Підтверджено",
+    PROCESSING: "В обробці",
     SHIPPED: "Відправлено",
     DELIVERED: "Доставлено",
     CANCELLED: "Скасовано",
@@ -105,9 +103,26 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
+  const fallbackNameParts =
+    (user.name ?? "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+  const firstName =
+    user.firstName ||
+    fallbackNameParts[0] ||
+    "";
+
+  const lastName =
+    user.lastName ||
+    fallbackNameParts
+      .slice(1)
+      .join(" ");
+
   const fullName = [
-    user.firstName,
-    user.lastName,
+    firstName,
+    lastName,
   ]
     .filter(Boolean)
     .join(" ");
@@ -149,9 +164,18 @@ export default async function AccountPage() {
         <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <section className="rounded-[28px] border border-border bg-surface p-6 shadow-sm sm:p-8">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent-soft text-lg font-semibold text-accent-hover">
-                {initials}
-              </div>
+              {user.image ? (
+                <img
+                  src={user.image}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  className="h-16 w-16 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent-soft text-lg font-semibold text-accent-hover">
+                  {initials}
+                </div>
+              )}
 
               <div className="min-w-0">
                 <h2 className="truncate text-xl font-semibold text-foreground">
@@ -165,26 +189,6 @@ export default async function AccountPage() {
             </div>
 
             <div className="mt-8 space-y-5">
-              <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-muted">
-                  Ім&apos;я
-                </p>
-
-                <p className="mt-1 text-sm text-foreground">
-                  {displayName}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-muted">
-                  Email
-                </p>
-
-                <p className="mt-1 break-all text-sm text-foreground">
-                  {user.email}
-                </p>
-              </div>
-
               <div>
                 <p className="text-xs uppercase tracking-[0.14em] text-muted">
                   Телефон
@@ -249,8 +253,7 @@ export default async function AccountPage() {
               </h2>
             </div>
 
-            {user.orders.length ===
-            0 ? (
+            {user.orders.length === 0 ? (
               <div className="mt-8 rounded-3xl border border-border bg-background/40 p-8 text-center">
                 <Package
                   className="mx-auto h-8 w-8 text-muted"
@@ -339,34 +342,20 @@ export default async function AccountPage() {
         </div>
 
         <div className="mt-6">
+          <ProfileManager
+            firstName={firstName}
+            lastName={lastName}
+            phone={user.phone || ""}
+            email={user.email || ""}
+          />
+        </div>
+
+        <div className="mt-6">
           <PasswordManager
             hasPassword={Boolean(
               user.passwordHash,
             )}
           />
-        </div>
-
-        <div className="mt-6 rounded-[28px] border border-border bg-surface p-6 shadow-sm sm:p-8">
-          <div className="flex items-center gap-3">
-            <UserRound
-              className="h-5 w-5 text-accent-hover"
-              strokeWidth={1.7}
-            />
-
-            <div>
-              <h2 className="font-semibold text-foreground">
-                Безпека акаунта
-              </h2>
-
-              <p className="mt-1 text-sm text-muted">
-                Один email відповідає
-                одному акаунту Lunera.
-                До нього можна
-                підключити декілька
-                способів входу.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </main>

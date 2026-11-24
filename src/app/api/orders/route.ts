@@ -18,18 +18,24 @@ type OrderRequestBody = {
   items?: OrderRequestItem[];
 };
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+) {
   try {
-    const session = await auth();
+    const session =
+      await auth();
 
     const body =
       (await request.json()) as OrderRequestBody;
 
     const customerName =
-      body.customerName?.trim() ?? "";
+      body.customerName?.trim() ??
+      "";
 
     const email =
-      body.email?.trim().toLowerCase() ?? "";
+      body.email
+        ?.trim()
+        .toLowerCase() ?? "";
 
     const phone =
       body.phone?.trim() ?? "";
@@ -38,7 +44,8 @@ export async function POST(request: Request) {
       body.city?.trim() ?? "";
 
     const deliveryAddress =
-      body.deliveryAddress?.trim() ?? "";
+      body.deliveryAddress?.trim() ??
+      "";
 
     const comment =
       body.comment?.trim() ?? "";
@@ -67,7 +74,8 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          error: "Кошик порожній.",
+          error:
+            "Кошик порожній.",
         },
         {
           status: 400,
@@ -75,14 +83,53 @@ export async function POST(request: Request) {
       );
     }
 
-    let userId: string | null = null;
+    /*
+     * Берём userId прямо из Auth.js session.
+     */
+    let userId: string | null =
+      null;
 
-    if (session?.user?.email) {
-      const currentUser =
+    if (session?.user) {
+      const sessionUser =
+        session.user as typeof session.user & {
+          id?: string;
+        };
+
+      if (sessionUser.id) {
+        const user =
+          await prisma.user.findUnique({
+            where: {
+              id:
+                sessionUser.id,
+            },
+
+            select: {
+              id: true,
+            },
+          });
+
+        if (user) {
+          userId =
+            user.id;
+        }
+      }
+    }
+
+    /*
+     * Fallback для старой session,
+     * созданной до добавления id.
+     */
+    if (
+      !userId &&
+      session?.user?.email
+    ) {
+      const user =
         await prisma.user.findUnique({
           where: {
             email:
-              session.user.email.toLowerCase(),
+              session.user.email
+                .trim()
+                .toLowerCase(),
           },
 
           select: {
@@ -91,16 +138,20 @@ export async function POST(request: Request) {
         });
 
       userId =
-        currentUser?.id ?? null;
+        user?.id ?? null;
     }
+
+    const variantIds =
+      body.items.map(
+        (item) =>
+          item.variantId,
+      );
 
     const variants =
       await prisma.productVariant.findMany({
         where: {
           id: {
-            in: body.items.map(
-              (item) => item.variantId,
-            ),
+            in: variantIds,
           },
         },
 
@@ -127,87 +178,82 @@ export async function POST(request: Request) {
     let total = 0;
 
     const orderItems =
-      body.items.map((item) => {
-        const variant =
-          variants.find(
-            (variant) =>
-              variant.id ===
-              item.variantId,
-          );
+      body.items.map(
+        (item) => {
+          if (
+            !Number.isInteger(
+              item.quantity,
+            ) ||
+            item.quantity <= 0
+          ) {
+            throw new Error(
+              "Некоректна кількість товару.",
+            );
+          }
 
-        if (!variant) {
-          throw new Error(
-            "Варіант товару не знайдено.",
-          );
-        }
+          const variant =
+            variants.find(
+              (variant) =>
+                variant.id ===
+                item.variantId,
+            );
 
-        if (
-          variant.stock <
-          item.quantity
-        ) {
-          throw new Error(
-            `Недостатньо товару "${variant.product.name}" на складі.`,
-          );
-        }
+          if (!variant) {
+            throw new Error(
+              "Варіант товару не знайдено.",
+            );
+          }
 
-        const price =
-          Number(
-            variant.product.price,
-          );
+          if (
+            variant.stock <
+            item.quantity
+          ) {
+            throw new Error(
+              `Недостатньо товару "${variant.product.name}" на складі.`,
+            );
+          }
 
-        total +=
-          price * item.quantity;
+          const price =
+            Number(
+              variant.product
+                .price,
+            );
 
-        return {
-          variantId:
-            variant.id,
+          total +=
+            price *
+            item.quantity;
 
-          productName:
-            variant.product.name,
+          return {
+            variantId:
+              variant.id,
 
-          size:
-            variant.size,
+            productName:
+              variant.product
+                .name,
 
-          color:
-            variant.color,
+            size:
+              variant.size,
 
-          price:
-            variant.product.price,
+            color:
+              variant.color,
 
-          quantity:
-            item.quantity,
-        };
-      });
+            price:
+              variant.product
+                .price,
+
+            quantity:
+              item.quantity,
+          };
+        },
+      );
 
     const order =
       await prisma.$transaction(
         async (tx) => {
-          const createdOrder =
-            await tx.order.create({
-              data: {
-                userId,
-
-                customerName,
-                email,
-                phone,
-                city,
-                deliveryAddress,
-
-                comment:
-                  comment || null,
-
-                total:
-                  total.toFixed(2),
-
-                items: {
-                  create:
-                    orderItems,
-                },
-              },
-            });
-
-          for (const item of body.items!) {
-            const update =
+          for (
+            const item of body.items!
+          ) {
+            const result =
               await tx.productVariant.updateMany({
                 where: {
                   id:
@@ -227,26 +273,57 @@ export async function POST(request: Request) {
                 },
               });
 
-            if (update.count !== 1) {
+            if (
+              result.count !== 1
+            ) {
               throw new Error(
-                "Недостатній залишок товару.",
+                "Недостатній залишок одного з товарів.",
               );
             }
           }
 
-          return createdOrder;
+          return tx.order.create({
+            data: {
+              userId,
+
+              customerName,
+              email,
+              phone,
+              city,
+              deliveryAddress,
+
+              comment:
+                comment || null,
+
+              total:
+                total.toFixed(2),
+
+              items: {
+                create:
+                  orderItems,
+              },
+            },
+
+            include: {
+              items: true,
+            },
+          });
         },
       );
 
     return NextResponse.json(
       {
+        success: true,
+
         orderId:
           order.id,
 
         total,
 
         linkedToAccount:
-          Boolean(userId),
+          userId !== null,
+
+        userId,
       },
       {
         status: 201,

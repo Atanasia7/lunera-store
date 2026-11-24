@@ -1,45 +1,53 @@
 import { NextResponse } from "next/server";
-import { hash } from "bcryptjs";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-type RegisterRequestBody = {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  password?: string;
+type OrderRequestItem = {
+  variantId: string;
+  quantity: number;
 };
 
-export async function POST(
-  request: Request,
-) {
+type OrderRequestBody = {
+  customerName?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  deliveryAddress?: string;
+  comment?: string;
+  items?: OrderRequestItem[];
+};
+
+export async function POST(request: Request) {
   try {
-    const body =
-      (await request.json()) as RegisterRequestBody;
+    const session = await auth();
 
-    const firstName =
-      body.firstName?.trim() ?? "";
+    const body = (await request.json()) as OrderRequestBody;
 
-    const lastName =
-      body.lastName?.trim() ?? "";
+    const customerName =
+      body.customerName?.trim() ?? "";
 
     const email =
-      body.email
-        ?.trim()
-        .toLowerCase() ?? "";
+      body.email?.trim().toLowerCase() ?? "";
 
     const phone =
       body.phone?.trim() ?? "";
 
-    const password =
-      body.password ?? "";
+    const city =
+      body.city?.trim() ?? "";
+
+    const deliveryAddress =
+      body.deliveryAddress?.trim() ?? "";
+
+    const comment =
+      body.comment?.trim() ?? "";
 
     if (
-      !firstName ||
-      !lastName ||
+      !customerName ||
       !email ||
-      !password
+      !phone ||
+      !city ||
+      !deliveryAddress
     ) {
       return NextResponse.json(
         {
@@ -52,16 +60,10 @@ export async function POST(
       );
     }
 
-    const emailPattern =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (
-      !emailPattern.test(email)
-    ) {
+    if (!body.items || body.items.length === 0) {
       return NextResponse.json(
         {
-          error:
-            "Вкажіть коректну електронну пошту.",
+          error: "Кошик порожній.",
         },
         {
           status: 400,
@@ -69,75 +71,221 @@ export async function POST(
       );
     }
 
-    if (
-      password.length < 8
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Пароль має містити щонайменше 8 символів.",
-        },
-        {
-          status: 400,
-        },
-      );
+    /*
+     * Если пользователь авторизован,
+     * находим его User в БД.
+     *
+     * Для гостя userId останется null.
+     */
+    let userId: string | null = null;
+
+    if (session?.user?.email) {
+      const currentUser =
+        await prisma.user.findUnique({
+          where: {
+            email:
+              session.user.email
+                .trim()
+                .toLowerCase(),
+          },
+
+          select: {
+            id: true,
+          },
+        });
+
+      userId =
+        currentUser?.id ?? null;
     }
 
-    const existingUser =
-      await prisma.user.findUnique({
+    const requestedVariantIds =
+      body.items.map(
+        (item) => item.variantId,
+      );
+
+    const variants =
+      await prisma.productVariant.findMany({
         where: {
-          email,
+          id: {
+            in: requestedVariantIds,
+          },
         },
 
-        select: {
-          id: true,
+        include: {
+          product: true,
         },
       });
 
-    if (existingUser) {
+    if (
+      variants.length !==
+      body.items.length
+    ) {
       return NextResponse.json(
         {
           error:
-            "Обліковий запис з цією електронною поштою вже існує. Увійдіть до нього. Якщо ви створили акаунт через Google, скористайтеся входом через Google та створіть пароль в особистому кабінеті.",
+            "Один із товарів не знайдено.",
         },
         {
-          status: 409,
+          status: 400,
         },
       );
     }
 
-    const passwordHash =
-      await hash(
-        password,
-        12,
-      );
+    let total = 0;
 
-    const user =
-      await prisma.user.create({
-        data: {
-          firstName,
-          lastName,
+    const orderItems =
+      body.items.map((item) => {
+        if (
+          !Number.isInteger(
+            item.quantity,
+          ) ||
+          item.quantity <= 0
+        ) {
+          throw new Error(
+            "Некоректна кількість товару.",
+          );
+        }
 
-          name: `${firstName} ${lastName}`,
+        const variant =
+          variants.find(
+            (variant) =>
+              variant.id ===
+              item.variantId,
+          );
 
-          email,
+        if (!variant) {
+          throw new Error(
+            "Варіант товару не знайдено.",
+          );
+        }
 
-          phone:
-            phone || null,
+        if (
+          variant.stock <
+          item.quantity
+        ) {
+          throw new Error(
+            `Недостатньо товару "${variant.product.name}" на складі.`,
+          );
+        }
 
-          passwordHash,
-        },
+        const price =
+          Number(
+            variant.product.price,
+          );
 
-        select: {
-          id: true,
-          email: true,
-        },
+        total +=
+          price * item.quantity;
+
+        return {
+          variantId:
+            variant.id,
+
+          productName:
+            variant.product.name,
+
+          size:
+            variant.size,
+
+          color:
+            variant.color,
+
+          price:
+            variant.product.price,
+
+          quantity:
+            item.quantity,
+        };
       });
+
+    const order =
+      await prisma.$transaction(
+        async (tx) => {
+          /*
+           * Сначала повторно уменьшаем остатки
+           * с проверкой stock >= quantity.
+           *
+           * Это защищает от ситуации,
+           * когда два клиента одновременно
+           * пытаются купить последний товар.
+           */
+          for (const item of body.items!) {
+            const result =
+              await tx.productVariant.updateMany({
+                where: {
+                  id:
+                    item.variantId,
+
+                  stock: {
+                    gte:
+                      item.quantity,
+                  },
+                },
+
+                data: {
+                  stock: {
+                    decrement:
+                      item.quantity,
+                  },
+                },
+              });
+
+            if (
+              result.count !== 1
+            ) {
+              throw new Error(
+                "Недостатній залишок одного з товарів.",
+              );
+            }
+          }
+
+          /*
+           * Создаём заказ.
+           *
+           * Для вошедшего пользователя
+           * userId сохраняется.
+           *
+           * Для гостя остаётся null.
+           */
+          return tx.order.create({
+            data: {
+              userId,
+
+              customerName,
+              email,
+              phone,
+              city,
+              deliveryAddress,
+
+              comment:
+                comment || null,
+
+              total:
+                total.toFixed(2),
+
+              items: {
+                create:
+                  orderItems,
+              },
+            },
+
+            include: {
+              items: true,
+            },
+          });
+        },
+      );
 
     return NextResponse.json(
       {
         success: true,
-        user,
+
+        orderId:
+          order.id,
+
+        total,
+
+        linkedToAccount:
+          Boolean(userId),
       },
       {
         status: 201,
@@ -145,14 +293,16 @@ export async function POST(
     );
   } catch (error) {
     console.error(
-      "Registration error:",
+      "Order creation error:",
       error,
     );
 
     return NextResponse.json(
       {
         error:
-          "Не вдалося створити акаунт.",
+          error instanceof Error
+            ? error.message
+            : "Не вдалося створити замовлення.",
       },
       {
         status: 500,

@@ -138,5 +138,40 @@ export const {
 
       return true;
     },
+
+    async jwt({
+      token,
+      user,
+    }) {
+      if (user?.id) {
+        token.userId =
+          user.id;
+      }
+
+      return token;
+    },
+
+    async session({
+      session,
+      token,
+    }) {
+      if (session.user) {
+        const userId =
+          typeof token.userId ===
+          "string"
+            ? token.userId
+            : token.sub;
+
+        if (userId) {
+          (
+            session.user as typeof session.user & {
+              id: string;
+            }
+          ).id = userId;
+        }
+      }
+
+      return session;
+    },
   },
 });
