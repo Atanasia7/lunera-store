@@ -7,6 +7,8 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { useStorageIdentity } from "@/components/StorageIdentityProvider";
+
 export type FavoriteItem = {
   id: string;
   name: string;
@@ -19,12 +21,15 @@ export type FavoriteItem = {
 type FavoritesContextValue = {
   items: FavoriteItem[];
   totalFavorites: number;
+
   isFavorite: (
     productId: string,
   ) => boolean;
+
   toggleFavorite: (
     product: FavoriteItem,
   ) => void;
+
   clearFavorites: () => void;
 };
 
@@ -33,75 +38,57 @@ const FavoritesContext =
     null,
   );
 
-const STORAGE_KEY =
-  "lunera-favorites";
+const EMPTY_SNAPSHOT = "[]";
 
 const CHANGE_EVENT =
   "lunera-favorites-change";
-
-const EMPTY_SNAPSHOT = "[]";
-
-function subscribe(
-  callback: () => void,
-) {
-  window.addEventListener(
-    "storage",
-    callback,
-  );
-
-  window.addEventListener(
-    CHANGE_EVENT,
-    callback,
-  );
-
-  return () => {
-    window.removeEventListener(
-      "storage",
-      callback,
-    );
-
-    window.removeEventListener(
-      CHANGE_EVENT,
-      callback,
-    );
-  };
-}
-
-function getSnapshot() {
-  return (
-    localStorage.getItem(
-      STORAGE_KEY,
-    ) ?? EMPTY_SNAPSHOT
-  );
-}
-
-function getServerSnapshot() {
-  return EMPTY_SNAPSHOT;
-}
-
-function saveFavorites(
-  items: FavoriteItem[],
-) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(items),
-  );
-
-  window.dispatchEvent(
-    new Event(CHANGE_EVENT),
-  );
-}
 
 export function FavoritesProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const ownerKey =
+    useStorageIdentity();
+
+  const storageKey = ownerKey
+    ? `lunera-favorites:${ownerKey}`
+    : null;
+
   const snapshot =
     useSyncExternalStore(
-      subscribe,
-      getSnapshot,
-      getServerSnapshot,
+      (callback) => {
+        window.addEventListener(
+          "storage",
+          callback,
+        );
+
+        window.addEventListener(
+          CHANGE_EVENT,
+          callback,
+        );
+
+        return () => {
+          window.removeEventListener(
+            "storage",
+            callback,
+          );
+
+          window.removeEventListener(
+            CHANGE_EVENT,
+            callback,
+          );
+        };
+      },
+
+      () =>
+        storageKey
+          ? localStorage.getItem(
+              storageKey,
+            ) ?? EMPTY_SNAPSHOT
+          : EMPTY_SNAPSHOT,
+
+      () => EMPTY_SNAPSHOT,
     );
 
   const items = useMemo(() => {
@@ -117,6 +104,23 @@ export function FavoritesProvider({
     }
   }, [snapshot]);
 
+  function saveFavorites(
+    nextItems: FavoriteItem[],
+  ) {
+    if (!storageKey) {
+      return;
+    }
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(nextItems),
+    );
+
+    window.dispatchEvent(
+      new Event(CHANGE_EVENT),
+    );
+  }
+
   function isFavorite(
     productId: string,
   ) {
@@ -129,13 +133,9 @@ export function FavoritesProvider({
   function toggleFavorite(
     product: FavoriteItem,
   ) {
-    const exists =
-      items.some(
-        (item) =>
-          item.id === product.id,
-      );
-
-    if (exists) {
+    if (
+      isFavorite(product.id)
+    ) {
       saveFavorites(
         items.filter(
           (item) =>
@@ -160,8 +160,10 @@ export function FavoritesProvider({
     <FavoritesContext.Provider
       value={{
         items,
+
         totalFavorites:
           items.length,
+
         isFavorite,
         toggleFavorite,
         clearFavorites,

@@ -3,9 +3,11 @@
 import {
   createContext,
   useContext,
-  useState,
+  useMemo,
   useSyncExternalStore,
 } from "react";
+
+import { useStorageIdentity } from "@/components/StorageIdentityProvider";
 
 export type CartItem = {
   variantId: string;
@@ -20,7 +22,10 @@ export type CartItem = {
   quantity: number;
 };
 
-type AddCartItem = Omit<CartItem, "quantity"> & {
+type AddCartItem = Omit<
+  CartItem,
+  "quantity"
+> & {
   quantity?: number;
 };
 
@@ -30,183 +35,215 @@ type CartContextValue = {
   subtotal: number;
   hydrated: boolean;
 
-  addItem: (item: AddCartItem) => void;
-  removeItem: (variantId: string) => void;
+  addItem: (
+    item: AddCartItem,
+  ) => void;
+
+  removeItem: (
+    variantId: string,
+  ) => void;
+
   setQuantity: (
     variantId: string,
     quantity: number,
   ) => void;
+
   clearCart: () => void;
 };
 
 const CartContext =
-  createContext<CartContextValue | null>(null);
+  createContext<CartContextValue | null>(
+    null,
+  );
 
-const STORAGE_KEY = "lunera-cart";
-
-function getInitialCart(): CartItem[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const savedCart =
-      localStorage.getItem(STORAGE_KEY);
-
-    if (!savedCart) {
-      return [];
-    }
-
-    const parsed = JSON.parse(savedCart);
-
-    return Array.isArray(parsed)
-      ? parsed
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function subscribeToHydration() {
-  return () => {};
-}
+const EMPTY_SNAPSHOT = "[]";
+const CHANGE_EVENT =
+  "lunera-cart-change";
 
 export function CartProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [items, setItems] =
-    useState<CartItem[]>(getInitialCart);
+  const ownerKey =
+    useStorageIdentity();
 
-  const hydrated = useSyncExternalStore(
-    subscribeToHydration,
-    () => true,
-    () => false,
-  );
+  const storageKey = ownerKey
+    ? `lunera-cart:${ownerKey}`
+    : null;
 
-  function saveCart(nextItems: CartItem[]) {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(nextItems),
-      );
-    }
-
-    return nextItems;
-  }
-
-  function addItem(item: AddCartItem) {
-    setItems((currentItems) => {
-      const quantity =
-        item.quantity ?? 1;
-
-      const existing =
-        currentItems.find(
-          (currentItem) =>
-            currentItem.variantId ===
-            item.variantId,
+  const snapshot =
+    useSyncExternalStore(
+      (callback) => {
+        window.addEventListener(
+          "storage",
+          callback,
         );
 
-      if (existing) {
-        const nextItems =
-          currentItems.map(
-            (currentItem) => {
-              if (
-                currentItem.variantId !==
-                item.variantId
-              ) {
-                return currentItem;
-              }
+        window.addEventListener(
+          CHANGE_EVENT,
+          callback,
+        );
 
-              return {
-                ...currentItem,
-
-                quantity: Math.min(
-                  currentItem.stock,
-                  currentItem.quantity +
-                    quantity,
-                ),
-              };
-            },
+        return () => {
+          window.removeEventListener(
+            "storage",
+            callback,
           );
 
-        return saveCart(nextItems);
-      }
+          window.removeEventListener(
+            CHANGE_EVENT,
+            callback,
+          );
+        };
+      },
 
-      const nextItems = [
-        ...currentItems,
-        {
-          ...item,
-          quantity: Math.min(
+      () =>
+        storageKey
+          ? localStorage.getItem(
+              storageKey,
+            ) ?? EMPTY_SNAPSHOT
+          : EMPTY_SNAPSHOT,
+
+      () => EMPTY_SNAPSHOT,
+    );
+
+  const items = useMemo(() => {
+    try {
+      const parsed =
+        JSON.parse(snapshot);
+
+      return Array.isArray(parsed)
+        ? (parsed as CartItem[])
+        : [];
+    } catch {
+      return [];
+    }
+  }, [snapshot]);
+
+  function saveCart(
+    nextItems: CartItem[],
+  ) {
+    if (!storageKey) {
+      return;
+    }
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(nextItems),
+    );
+
+    window.dispatchEvent(
+      new Event(CHANGE_EVENT),
+    );
+  }
+
+  function addItem(
+    item: AddCartItem,
+  ) {
+    const quantity =
+      item.quantity ?? 1;
+
+    const existing =
+      items.find(
+        (currentItem) =>
+          currentItem.variantId ===
+          item.variantId,
+      );
+
+    if (existing) {
+      saveCart(
+        items.map(
+          (currentItem) =>
+            currentItem.variantId ===
+            item.variantId
+              ? {
+                  ...currentItem,
+
+                  quantity:
+                    Math.min(
+                      currentItem.stock,
+                      currentItem.quantity +
+                        quantity,
+                    ),
+                }
+              : currentItem,
+        ),
+      );
+
+      return;
+    }
+
+    saveCart([
+      ...items,
+      {
+        ...item,
+
+        quantity:
+          Math.min(
             item.stock,
             quantity,
           ),
-        },
-      ];
-
-      return saveCart(nextItems);
-    });
+      },
+    ]);
   }
 
-  function removeItem(variantId: string) {
-    setItems((currentItems) => {
-      const nextItems =
-        currentItems.filter(
-          (item) =>
-            item.variantId !== variantId,
-        );
-
-      return saveCart(nextItems);
-    });
+  function removeItem(
+    variantId: string,
+  ) {
+    saveCart(
+      items.filter(
+        (item) =>
+          item.variantId !==
+          variantId,
+      ),
+    );
   }
 
   function setQuantity(
     variantId: string,
     quantity: number,
   ) {
-    setItems((currentItems) => {
-      const nextItems =
-        currentItems.map((item) => {
-          if (
-            item.variantId !== variantId
-          ) {
-            return item;
-          }
+    saveCart(
+      items.map((item) =>
+        item.variantId ===
+        variantId
+          ? {
+              ...item,
 
-          return {
-            ...item,
-
-            quantity: Math.max(
-              1,
-              Math.min(
-                item.stock,
-                quantity,
-              ),
-            ),
-          };
-        });
-
-      return saveCart(nextItems);
-    });
+              quantity:
+                Math.max(
+                  1,
+                  Math.min(
+                    item.stock,
+                    quantity,
+                  ),
+                ),
+            }
+          : item,
+      ),
+    );
   }
 
   function clearCart() {
-    setItems(() => saveCart([]));
+    saveCart([]);
   }
 
-  const totalItems = items.reduce(
-    (total, item) =>
-      total + item.quantity,
-    0,
-  );
+  const totalItems =
+    items.reduce(
+      (total, item) =>
+        total + item.quantity,
+      0,
+    );
 
-  const subtotal = items.reduce(
-    (total, item) =>
-      total +
-      item.price * item.quantity,
-    0,
-  );
+  const subtotal =
+    items.reduce(
+      (total, item) =>
+        total +
+        item.price *
+          item.quantity,
+      0,
+    );
 
   return (
     <CartContext.Provider
@@ -214,7 +251,10 @@ export function CartProvider({
         items,
         totalItems,
         subtotal,
-        hydrated,
+
+        hydrated:
+          ownerKey !== null,
+
         addItem,
         removeItem,
         setQuantity,
