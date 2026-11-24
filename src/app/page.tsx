@@ -1,22 +1,59 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+
+import ProductCard from "@/components/ProductCard";
 import { prisma } from "@/lib/prisma";
+import { getProductPhotos } from "@/lib/product-photos";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const products = await prisma.product.findMany({
-    where: {
-      isActive: true,
-    },
-    include: {
-      category: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 4,
-  });
+  const [categories, newestProducts] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        imageUrl: true,
+        _count: {
+          select: { products: true },
+        },
+      },
+    }),
+
+    prisma.product.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: {
+        images: {
+          orderBy: { position: "asc" },
+          select: { url: true },
+        },
+        variants: {
+          select: { color: true },
+        },
+      },
+    }),
+  ]);
+
+  const preparedProducts = newestProducts.map(
+    (product) => ({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      imageUrl: getProductPhotos(product)[0] ?? null,
+      price: Number(product.price),
+      colors: [
+        ...new Set(
+          product.variants.map(
+            (variant) => variant.color,
+          ),
+        ),
+      ],
+    }),
+  );
 
   return (
     <main>
@@ -32,8 +69,9 @@ export default async function HomePage() {
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-8 text-neutral-600">
-              Сучасний жіночий одяг для повсякденних образів, особливих
-              подій і моментів, коли хочеться почуватися впевнено.
+              Сучасний жіночий одяг для повсякденних
+              образів, особливих подій і моментів, коли
+              хочеться почуватися впевнено.
             </p>
 
             <Link
@@ -53,105 +91,109 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-20">
-        <div className="mb-10">
-          <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">
-            Категорії
-          </p>
+        <div className="mb-10 flex items-end justify-between gap-6">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-muted">
+              Категорії
+            </p>
 
-          <h2 className="mt-2 text-3xl font-semibold text-neutral-900">
-            Обери свій образ
-          </h2>
-        </div>
+            <h2 className="editorial-title mt-2 text-4xl text-foreground">
+              Обери свій образ
+            </h2>
+          </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/catalog?category=dresses" className="group">
-            <div className="flex aspect-4/5 items-end bg-neutral-100 p-6 transition group-hover:bg-neutral-200">
-              <h3 className="text-xl font-medium">Сукні</h3>
-            </div>
-          </Link>
-
-          <Link href="/catalog?category=blouses" className="group">
-            <div className="flex aspect-4/5 items-end bg-neutral-100 p-6 transition group-hover:bg-neutral-200">
-              <h3 className="text-xl font-medium">Блузи</h3>
-            </div>
-          </Link>
-
-          <Link href="/catalog?category=trousers" className="group">
-            <div className="flex aspect-4/5 items-end bg-neutral-100 p-6 transition group-hover:bg-neutral-200">
-              <h3 className="text-xl font-medium">Штани</h3>
-            </div>
-          </Link>
-
-          <Link href="/catalog?category=outerwear" className="group">
-            <div className="flex aspect-4/5 items-end bg-neutral-100 p-6 transition group-hover:bg-neutral-200">
-              <h3 className="text-xl font-medium">Верхній одяг</h3>
-            </div>
+          <Link
+            href="/catalog"
+            className="shrink-0 text-sm font-medium text-accent-hover"
+          >
+            Усі товари →
           </Link>
         </div>
+
+        {categories.length > 0 ? (
+          <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-4">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/catalog?category=${encodeURIComponent(category.slug)}`}
+                className="group relative aspect-4/5 w-[82vw] max-w-91 shrink-0 snap-start overflow-hidden rounded-3xl border border-border bg-surface-soft shadow-(--shadow) sm:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-3.75rem)/4)]"
+              >
+                {category.imageUrl ? (
+                  <Image
+                    src={category.imageUrl}
+                    alt={category.name}
+                    fill
+                    sizes="(max-width: 640px) 82vw, (max-width: 1024px) 50vw, 25vw"
+                    className="object-cover transition duration-500 group-hover:scale-[1.025]"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-accent-soft">
+                    <span className="editorial-title text-7xl text-muted">
+                      {category.name.charAt(0)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
+
+                <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                  <h3 className="editorial-title text-3xl">
+                    {category.name}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-white/75">
+                    {category._count.products} товарів
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="glass-panel px-6 py-12 text-center">
+            <p className="text-sm text-muted">
+              Категорії поки не додані.
+            </p>
+          </div>
+        )}
       </section>
 
-      <section className="bg-neutral-50">
+      <section className="bg-background/60">
         <div className="mx-auto max-w-7xl px-6 py-20">
           <div className="mb-10 flex items-end justify-between gap-6">
             <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">
+              <p className="text-sm uppercase tracking-[0.2em] text-muted">
                 Lunera
               </p>
 
-              <h2 className="mt-2 text-3xl font-semibold">
+              <h2 className="editorial-title mt-2 text-4xl text-foreground">
                 Новинки
               </h2>
             </div>
 
             <Link
               href="/catalog"
-              className="text-sm font-medium text-neutral-700 underline underline-offset-4"
+              className="text-sm font-medium text-accent-hover"
             >
-              Усі товари
+              Усі товари →
             </Link>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => (
-              <Link
-                key={product.id}
-                href={`/product/${product.slug}`}
-                className="group"
-              >
-                <div className="relative aspect-4/5 overflow-hidden bg-neutral-100">
-  {product.imageUrl ? (
-    <Image
-      src={product.imageUrl.trim()}
-      alt={product.name}
-      fill
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-      className="object-cover transition duration-300 group-hover:scale-[1.02]"
-    />
-  ) : (
-    <div className="flex h-full items-center justify-center">
-      <span className="text-6xl font-light text-neutral-300">
-        {product.name.charAt(0)}
-      </span>
-    </div>
-  )}
-</div>
-
-                <div className="pt-4">
-                  <p className="text-xs uppercase tracking-[0.15em] text-neutral-500">
-                    {product.category.name}
-                  </p>
-
-                  <h3 className="mt-2 font-medium text-neutral-900 transition group-hover:text-neutral-500">
-                    {product.name}
-                  </h3>
-
-                  <p className="mt-2 text-sm font-medium">
-                    {Number(product.price).toLocaleString("uk-UA")} грн
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {preparedProducts.length > 0 ? (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {preparedProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="glass-panel px-6 py-12 text-center">
+              <p className="text-sm text-muted">
+                Новинки з’являться після додавання товарів.
+              </p>
+            </div>
+          )}
         </div>
       </section>
     </main>

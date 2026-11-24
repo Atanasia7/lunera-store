@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, Plus } from "lucide-react";
+import { Boxes, Plus, Tags } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -78,6 +78,14 @@ export default async function AdminProductsPage() {
               className="glass-control px-5 py-3 text-sm font-medium text-foreground"
             >
               ← Замовлення
+            </Link>
+
+            <Link
+              href="/admin/categories"
+              className="glass-control flex items-center gap-2 px-5 py-3 text-sm font-medium text-foreground"
+            >
+              <Tags className="h-4 w-4" />
+              Категорії
             </Link>
 
             <Link

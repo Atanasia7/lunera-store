@@ -44,3 +44,10 @@ next-env.d.ts
 
 /public/images/products/uploads/
 /lunera-files.zip
+
+# runtime uploads
+/public/images/products/uploads/
+/public/images/categories/uploads/
+
+# local project archives
+/lunera-files.zip

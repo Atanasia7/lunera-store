@@ -7,6 +7,7 @@ import {
 
 import ProductCard from "@/components/ProductCard";
 import { prisma } from "@/lib/prisma";
+import { getProductPhotos } from "@/lib/product-photos";
 
 import type { Prisma } from "../../../generated/prisma/client";
 
@@ -23,25 +24,6 @@ type CatalogPageProps = {
     sort?: string;
   }>;
 };
-
-const categories = [
-  {
-    slug: "dresses",
-    label: "Сукні",
-  },
-  {
-    slug: "blouses",
-    label: "Блузи",
-  },
-  {
-    slug: "trousers",
-    label: "Штани",
-  },
-  {
-    slug: "outerwear",
-    label: "Верхній одяг",
-  },
-];
 
 const sizes = ["XS", "S", "M", "L", "XL"];
 
@@ -176,20 +158,34 @@ export default async function CatalogPage({
     };
   }
 
-  const products = await prisma.product.findMany({
-    where,
-    include: {
-      category: true,
-      variants: true,
-    },
-    orderBy,
-  });
+  const [categories, products] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    }),
+
+    prisma.product.findMany({
+      where,
+      include: {
+        images: {
+          orderBy: { position: "asc" },
+          select: { url: true },
+        },
+        variants: true,
+      },
+      orderBy,
+    }),
+  ]);
 
   const preparedProducts = products.map((product) => ({
     id: product.id,
     name: product.name,
     slug: product.slug,
-    imageUrl: product.imageUrl,
+    imageUrl: getProductPhotos(product)[0] ?? null,
     price: Number(product.price),
 
     colors: [
@@ -203,7 +199,6 @@ export default async function CatalogPage({
 
   return (
     <main className="page-shell py-8">
-      {/* Breadcrumbs */}
       <div className="mb-10">
         <nav
           className="flex flex-wrap items-center gap-2 text-sm text-muted"
@@ -236,7 +231,6 @@ export default async function CatalogPage({
       </div>
 
       <div className="grid items-start gap-8 lg:grid-cols-[280px_1fr]">
-        {/* FILTERS */}
         <aside>
           <form
             action="/catalog"
@@ -251,7 +245,6 @@ export default async function CatalogPage({
               />
             )}
 
-            {/* Filter header */}
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal
@@ -277,7 +270,6 @@ export default async function CatalogPage({
               </Link>
             </div>
 
-            {/* CATEGORY */}
             <div className="mt-6 border-t border-border-muted pt-5">
               <p className="text-sm font-semibold text-foreground">
                 Категорія
@@ -298,7 +290,7 @@ export default async function CatalogPage({
 
                 {categories.map((item) => (
                   <label
-                    key={item.slug}
+                    key={item.id}
                     className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted transition hover:bg-accent-soft"
                   >
                     <input
@@ -311,15 +303,12 @@ export default async function CatalogPage({
                       className="h-4 w-4 accent-accent"
                     />
 
-                    <span>
-                      {item.label}
-                    </span>
+                    <span>{item.name}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            {/* SIZE */}
             <div className="mt-6 border-t border-border-muted pt-5">
               <p className="text-sm font-semibold text-foreground">
                 Розмір
@@ -363,7 +352,6 @@ export default async function CatalogPage({
               </div>
             </div>
 
-            {/* COLOR */}
             <div className="mt-6 border-t border-border-muted pt-5">
               <p className="text-sm font-semibold text-foreground">
                 Колір
@@ -414,7 +402,6 @@ export default async function CatalogPage({
               </div>
             </div>
 
-            {/* PRICE */}
             <div className="mt-6 border-t border-border-muted pt-5">
               <p className="text-sm font-semibold text-foreground">
                 Ціна
@@ -474,7 +461,6 @@ export default async function CatalogPage({
           </form>
         </aside>
 
-        {/* PRODUCTS */}
         <section>
           <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -496,7 +482,6 @@ export default async function CatalogPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* VIEW SWITCH */}
               <div
                 className="glass-control flex h-11 items-center p-1"
                 aria-label="Вигляд каталогу"
@@ -528,7 +513,6 @@ export default async function CatalogPage({
                 </button>
               </div>
 
-              {/* SORTING */}
               <form
                 action="/catalog"
                 method="get"
@@ -615,7 +599,6 @@ export default async function CatalogPage({
             </div>
           </div>
 
-          {/* PRODUCT GRID */}
           {preparedProducts.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {preparedProducts.map((product) => (
