@@ -24,7 +24,7 @@ const acceptedPhotoTypes =
   allowedPhotoTypes.join(",");
 
 const actionClassName =
-  "glass-control px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40";
+  "glass-control inline-flex h-10 items-center justify-center px-3 text-sm font-medium leading-none disabled:cursor-not-allowed disabled:opacity-40";
 
 async function uploadPhoto(
   file: File,
@@ -223,19 +223,22 @@ export default function AdminProductGallery({
                   alt={`Фото товару ${index + 1}`}
                   className="aspect-4/5 w-full rounded-xl object-cover"
                 />
+                <p
+                  className={`flex h-5 items-center text-sm font-semibold ${
+                    index === 0
+                      ? "text-accent-hover"
+                      : "text-muted"
+                  }`}
+                >
+                  {index === 0
+                    ? "\u0413\u043e\u043b\u043e\u0432\u043d\u0435 \u0444\u043e\u0442\u043e"
+                    : `\u0424\u043e\u0442\u043e ${index + 1}`}
+                </p>
 
-                {index === 0 && (
-                  <p className="text-sm font-semibold text-accent-hover">
-                    Головне фото
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className={
-                      actionClassName
-                    }
+                    className={`${actionClassName} col-span-2`}
                     disabled={
                       index === 0
                     }
@@ -338,7 +341,7 @@ export default function AdminProductGallery({
         </div>
       )}
 
-      <label className="glass-control mt-3 inline-block cursor-pointer px-4 py-2 text-sm focus-within:ring-2 focus-within:ring-accent">
+      <label className="glass-control mt-3 inline-flex h-10 cursor-pointer items-center justify-center px-4 text-sm font-medium leading-none focus-within:ring-2 focus-within:ring-accent">
         Додати фото
 
         <input

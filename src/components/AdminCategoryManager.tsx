@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { Plus, Save, Trash2, Upload } from "lucide-react";
+import {
+  ChevronDown,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -120,7 +126,6 @@ export default function AdminCategoryManager({
 }: AdminCategoryManagerProps) {
   return (
     <div className="space-y-8">
-      <CreateCategoryForm />
 
       <section>
         <div className="mb-5">
@@ -134,7 +139,7 @@ export default function AdminCategoryManager({
         </div>
 
         {categories.length > 0 ? (
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-3">
             {categories.map((category) => (
               <CategoryEditor
                 key={category.id}
@@ -152,7 +157,7 @@ export default function AdminCategoryManager({
   );
 }
 
-function CreateCategoryForm() {
+export function CreateCategoryForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -228,6 +233,7 @@ function CreateCategoryForm() {
       setSlug("");
       setSlugEdited(false);
       setImageUrl("");
+      router.push("/admin/categories");
       router.refresh();
     } catch {
       setError("Не вдалося створити категорію.");
@@ -469,10 +475,52 @@ function CategoryEditor({
   }
 
   return (
-    <form
-      onSubmit={saveCategory}
-      className="glass-panel space-y-5 p-5"
-    >
+    <details className="glass-panel group overflow-hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 marker:content-none sm:px-6 [&::-webkit-details-marker]:hidden">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-xl bg-surface-soft">
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt={name}
+                fill
+                sizes="48px"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted">
+                ?
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-foreground">
+              {name || category.name}
+            </h3>
+
+            <p className="mt-1 truncate text-xs text-muted">
+              /{slug || category.slug}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-4">
+          <p className="hidden text-sm text-muted sm:block">
+            {"\u0422\u043e\u0432\u0430\u0440\u0456\u0432"}:{" "}
+            <span className="font-semibold text-foreground">
+              {category.productCount}
+            </span>
+          </p>
+
+          <ChevronDown className="h-5 w-5 text-muted transition-transform duration-200 group-open:rotate-180" />
+        </div>
+      </summary>
+
+      <form
+        onSubmit={saveCategory}
+        className="space-y-5 border-t border-border p-5 sm:p-6"
+      >
       <CategoryImageField
         imageUrl={imageUrl}
         name={name}
@@ -571,7 +619,8 @@ function CategoryEditor({
           {isDeleting ? "Видалення..." : "Видалити"}
         </button>
       </div>
-    </form>
+      </form>
+    </details>
   );
 }
 

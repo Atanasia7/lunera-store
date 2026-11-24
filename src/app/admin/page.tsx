@@ -1,309 +1,493 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
-  Boxes,
-  ClipboardList,
+  ChartNoAxesCombined,
   Package,
+  ShoppingBag,
+  Users,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import AdminOrderStatus from "@/components/AdminOrderStatus";
+import AdminSidebar from "@/components/AdminSidebar";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
-function formatPrice(value: unknown) {
-  return new Intl.NumberFormat("uk-UA", {
-    style: "currency",
-    currency: "UAH",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(Number(value));
+function formatPrice(
+  value: unknown,
+) {
+  return new Intl.NumberFormat(
+    "uk-UA",
+    {
+      style: "currency",
+      currency: "UAH",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    },
+  ).format(Number(value));
 }
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("uk-UA", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
+export default async function AdminDashboardPage() {
+  const session =
+    await auth();
 
-export default async function AdminOrdersPage() {
-  const session = await auth();
-  const email = session?.user?.email
-    ?.trim()
-    .toLowerCase();
+  const email =
+    session?.user?.email
+      ?.trim()
+      .toLowerCase();
 
   if (!email) {
     redirect("/login");
   }
 
-  const admin = await prisma.user.findUnique({
-    where: { email },
-    select: { role: true },
-  });
+  const admin =
+    await prisma.user.findUnique({
+      where: {
+        email,
+      },
 
-  if (!admin || admin.role !== "ADMIN") {
+      select: {
+        role: true,
+      },
+    });
+
+  if (
+    !admin ||
+    admin.role !== "ADMIN"
+  ) {
     redirect("/");
   }
 
-  const orders = await prisma.order.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: {
-        orderBy: { createdAt: "asc" },
+  const [
+    orders,
+    productCount,
+    userCount,
+  ] = await Promise.all([
+    prisma.order.findMany({
+      orderBy: {
+        createdAt: "desc",
       },
-    },
-  });
 
-  const newOrdersCount = orders.filter(
-    (order) => order.status === "NEW",
-  ).length;
+      include: {
+        items: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+    }),
+
+    prisma.product.count(),
+
+    prisma.user.count(),
+  ]);
+
+  const validOrders =
+    orders.filter(
+      (order) =>
+        order.status !==
+        "CANCELLED",
+    );
+
+  const salesTotal =
+    validOrders.reduce(
+      (total, order) =>
+        total +
+        Number(order.total),
+      0,
+    );
+
+  const newOrdersCount =
+    orders.filter(
+      (order) =>
+        order.status === "NEW",
+    ).length;
+
+  const productSales =
+    new Map<
+      string,
+      {
+        quantity: number;
+        revenue: number;
+      }
+    >();
+
+  for (
+    const order
+    of validOrders
+  ) {
+    for (
+      const item
+      of order.items
+    ) {
+      const current =
+        productSales.get(
+          item.productName,
+        ) ?? {
+          quantity: 0,
+          revenue: 0,
+        };
+
+      productSales.set(
+        item.productName,
+        {
+          quantity:
+            current.quantity +
+            item.quantity,
+
+          revenue:
+            current.revenue +
+            Number(
+              item.price,
+            ) *
+              item.quantity,
+        },
+      );
+    }
+  }
+
+  const topProducts = [
+    ...productSales.entries(),
+  ]
+    .map(
+      ([
+        name,
+        values,
+      ]) => ({
+        name,
+        ...values,
+      }),
+    )
+    .sort(
+      (a, b) =>
+        b.quantity -
+        a.quantity,
+    )
+    .slice(0, 5);
+
+  const salesByDay =
+    Array.from(
+      {
+        length: 7,
+      },
+      (
+        _,
+        index,
+      ) => {
+        const date =
+          new Date();
+
+        date.setHours(
+          0,
+          0,
+          0,
+          0,
+        );
+
+        date.setDate(
+          date.getDate() -
+            (6 - index),
+        );
+
+        const nextDate =
+          new Date(date);
+
+        nextDate.setDate(
+          nextDate.getDate() +
+            1,
+        );
+
+        const total =
+          validOrders
+            .filter(
+              (order) =>
+                order.createdAt >=
+                  date &&
+                order.createdAt <
+                  nextDate,
+            )
+            .reduce(
+              (
+                sum,
+                order,
+              ) =>
+                sum +
+                Number(
+                  order.total,
+                ),
+              0,
+            );
+
+        return {
+          label:
+            new Intl.DateTimeFormat(
+              "uk-UA",
+              {
+                day: "2-digit",
+                month: "2-digit",
+              },
+            ).format(date),
+
+          total,
+        };
+      },
+    );
+
+  const maxDailySales =
+    Math.max(
+      ...salesByDay.map(
+        (day) =>
+          day.total,
+      ),
+      1,
+    );
 
   return (
-    <main className="page-shell py-10 sm:py-14">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-muted">
-              Lunera Administration
-            </p>
+    <main className="page-shell py-8 sm:py-12">
+      <div className="grid items-start gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+        <AdminSidebar />
 
-            <h1 className="editorial-title mt-2 text-4xl text-foreground sm:text-5xl">
-              Замовлення
-            </h1>
+        <div className="min-w-0">
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-sm uppercase tracking-[0.18em] text-muted">
+                Lunera Administration
+              </p>
 
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-              Перегляд замовлень і керування їхніми
-              статусами.
-            </p>
-          </div>
+              <h1 className="editorial-title mt-2 text-4xl text-foreground sm:text-5xl">
+                Панель керування
+              </h1>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/admin/products"
-              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-accent to-accent-hover px-5 py-3 text-sm font-semibold text-white"
-            >
-              <Boxes className="h-4 w-4" />
-              Товари та склад
-            </Link>
+              <p className="mt-3 text-sm text-muted">
+                Огляд продажів, замовлень і товарів
+                магазину.
+              </p>
+            </div>
 
             <Link
-              href="/"
-              className="glass-control px-5 py-3 text-sm font-medium text-foreground"
+              href="/admin/products/new"
+              className="rounded-2xl bg-gradient-to-r from-accent to-accent-hover px-5 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5"
+              style={{
+                color: "#ffffff",
+              }}
             >
-              До магазину
+              + Додати товар
             </Link>
           </div>
-        </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          <div className="glass-panel flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-hover">
-              <ClipboardList className="h-5 w-5" />
-            </div>
+          <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              icon={
+                <ShoppingBag />
+              }
+              label="Замовлення"
+              value={
+                orders.length.toString()
+              }
+              note={`${newOrdersCount} нових`}
+            />
 
-            <div>
-              <p className="text-xs uppercase tracking-[0.12em] text-muted">
-                Всього
-              </p>
+            <MetricCard
+              icon={
+                <ChartNoAxesCombined />
+              }
+              label="Продажі"
+              value={formatPrice(
+                salesTotal,
+              )}
+              note="без скасованих"
+            />
 
-              <p className="mt-1 text-xl font-semibold text-foreground">
-                {orders.length}
-              </p>
-            </div>
-          </div>
+            <MetricCard
+              icon={<Package />}
+              label="Товари"
+              value={
+                productCount.toString()
+              }
+              note="у каталозі"
+            />
 
-          <div className="glass-panel flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-hover">
-              <Package className="h-5 w-5" />
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-[0.12em] text-muted">
-                Нові
-              </p>
-
-              <p className="mt-1 text-xl font-semibold text-foreground">
-                {newOrdersCount}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {orders.length === 0 ? (
-          <section className="glass-panel mt-8 p-10 text-center">
-            <Package className="mx-auto h-9 w-9 text-muted" />
-
-            <h2 className="mt-4 text-lg font-semibold text-foreground">
-              Замовлень поки немає
-            </h2>
-
-            <p className="mt-2 text-sm text-muted">
-              Нові замовлення з магазину з’являться тут.
-            </p>
+            <MetricCard
+              icon={<Users />}
+              label="Користувачі"
+              value={
+                userCount.toString()
+              }
+              note="зареєстровано"
+            />
           </section>
-        ) : (
-          <div className="mt-8 space-y-6">
-            {orders.map((order) => (
-              <article
-                key={order.id}
-                className="glass-panel overflow-hidden"
-              >
-                <div className="flex flex-col justify-between gap-5 border-b border-border p-6 lg:flex-row lg:items-start">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.12em] text-muted">
-                      Замовлення
-                    </p>
 
-                    <h2 className="mt-1 text-xl font-semibold text-foreground">
-                      #{order.id.slice(0, 8).toUpperCase()}
-                    </h2>
+          <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+            <section className="glass-panel p-6 sm:p-8">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Продажі за останні 7 днів
+                  </h2>
 
-                    <p className="mt-2 text-sm text-muted">
-                      {formatDate(order.createdAt)}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <p className="text-lg font-semibold text-foreground">
-                      {formatPrice(order.total)}
-                    </p>
-
-                    <AdminOrderStatus
-                      orderId={order.id}
-                      status={order.status}
-                    />
-                  </div>
+                  <p className="mt-1 text-sm text-muted">
+                    Сума успішних замовлень за днями
+                  </p>
                 </div>
 
-                <div className="grid gap-6 p-6 lg:grid-cols-[0.85fr_1.15fr]">
-                  <section>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Покупець і доставка
-                    </h3>
+                <ChartNoAxesCombined className="h-6 w-6 text-accent-hover" />
+              </div>
 
-                    <dl className="mt-4 space-y-3 text-sm">
-                      <div>
-                        <dt className="text-xs text-muted">
-                          Ім’я
-                        </dt>
+              <div className="mt-8 flex h-56 items-end gap-3 border-b border-border-muted pb-3 sm:gap-5">
+                {salesByDay.map(
+                  (day) => {
+                    const height =
+                      day.total >
+                      0
+                        ? Math.max(
+                            (day.total /
+                              maxDailySales) *
+                              100,
+                            8,
+                          )
+                        : 3;
 
-                        <dd className="mt-1 text-foreground">
-                          {order.customerName}
-                        </dd>
+                    return (
+                      <div
+                        key={
+                          day.label
+                        }
+                        className="flex h-full min-w-0 flex-1 flex-col justify-end text-center"
+                      >
+                        <p className="mb-2 truncate text-[10px] font-medium text-muted sm:text-xs">
+                          {day.total >
+                          0
+                            ? formatPrice(
+                                day.total,
+                              )
+                            : "—"}
+                        </p>
+
+                        <div
+                          className="mx-auto w-full max-w-14 rounded-t-xl bg-gradient-to-t from-accent-hover to-accent transition hover:opacity-80"
+                          style={{
+                            height: `${height}%`,
+                          }}
+                          title={`${day.label}: ${formatPrice(
+                            day.total,
+                          )}`}
+                        />
                       </div>
+                    );
+                  },
+                )}
+              </div>
 
-                      <div>
-                        <dt className="text-xs text-muted">
-                          Email
-                        </dt>
+              <div className="mt-3 grid grid-cols-7 gap-3 text-center text-[10px] text-muted sm:gap-5 sm:text-xs">
+                {salesByDay.map(
+                  (day) => (
+                    <span
+                      key={
+                        day.label
+                      }
+                    >
+                      {day.label}
+                    </span>
+                  ),
+                )}
+              </div>
+            </section>
 
-                        <dd className="mt-1 break-all text-foreground">
-                          {order.email}
-                        </dd>
-                      </div>
+            <section className="glass-panel p-6 sm:p-8">
+              <h2 className="text-xl font-semibold text-foreground">
+                Топ товарів
+              </h2>
 
-                      <div>
-                        <dt className="text-xs text-muted">
-                          Телефон
-                        </dt>
+              <p className="mt-1 text-sm text-muted">
+                За кількістю проданих одиниць
+              </p>
 
-                        <dd className="mt-1 text-foreground">
-                          {order.phone}
-                        </dd>
-                      </div>
+              {topProducts.length ===
+              0 ? (
+                <p className="mt-8 rounded-2xl bg-accent-soft p-5 text-sm text-muted">
+                  Даних про продажі поки немає.
+                </p>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  {topProducts.map(
+                    (
+                      product,
+                      index,
+                    ) => (
+                      <div
+                        key={
+                          product.name
+                        }
+                        className="flex items-center gap-3 rounded-2xl bg-accent-soft p-3"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface font-semibold text-accent-hover">
+                          {index + 1}
+                        </span>
 
-                      <div>
-                        <dt className="text-xs text-muted">
-                          Адреса
-                        </dt>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {
+                              product.name
+                            }
+                          </p>
 
-                        <dd className="mt-1 text-foreground">
-                          {order.city}, {order.deliveryAddress}
-                        </dd>
-                      </div>
-
-                      {order.comment && (
-                        <div>
-                          <dt className="text-xs text-muted">
-                            Коментар
-                          </dt>
-
-                          <dd className="mt-1 whitespace-pre-line text-foreground">
-                            {order.comment}
-                          </dd>
+                          <p className="mt-1 text-xs text-muted">
+                            {formatPrice(
+                              product.revenue,
+                            )}
+                          </p>
                         </div>
-                      )}
-                    </dl>
-                  </section>
 
-                  <section>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Товари
-                    </h3>
-
-                    <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
-                      <table className="w-full min-w-150 text-left">
-                        <thead>
-                          <tr className="border-b border-border bg-background/30 text-xs text-muted">
-                            <th className="px-4 py-3 font-medium">
-                              Товар
-                            </th>
-
-                            <th className="px-4 py-3 font-medium">
-                              Варіант
-                            </th>
-
-                            <th className="px-4 py-3 font-medium">
-                              Кількість
-                            </th>
-
-                            <th className="px-4 py-3 font-medium">
-                              Сума
-                            </th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {order.items.map((item) => (
-                            <tr
-                              key={item.id}
-                              className="border-b border-border/70 last:border-0"
-                            >
-                              <td className="px-4 py-3 text-sm text-foreground">
-                                {item.productName}
-                              </td>
-
-                              <td className="px-4 py-3 text-sm text-muted">
-                                {item.size} / {item.color}
-                              </td>
-
-                              <td className="px-4 py-3 text-sm text-foreground">
-                                {item.quantity}
-                              </td>
-
-                              <td className="px-4 py-3 text-sm font-medium text-foreground">
-                                {formatPrice(
-                                  Number(item.price) *
-                                    item.quantity,
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
+                        <strong className="text-sm text-foreground">
+                          {
+                            product.quantity
+                          }
+                        </strong>
+                      </div>
+                    ),
+                  )}
                 </div>
-              </article>
-            ))}
+              )}
+            </section>
           </div>
-        )}
+        </div>
       </div>
     </main>
+  );
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  note,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <div className="glass-panel flex items-center gap-4 p-5">
+      <span className="glass-control flex h-12 w-12 shrink-0 items-center justify-center text-accent-hover [&>svg]:h-5 [&>svg]:w-5">
+        {icon}
+      </span>
+
+      <div className="min-w-0">
+        <p className="text-xs text-muted">
+          {label}
+        </p>
+
+        <p className="mt-1 truncate text-xl font-semibold text-foreground">
+          {value}
+        </p>
+
+        <p className="mt-1 text-[11px] text-accent-hover">
+          {note}
+        </p>
+      </div>
+    </div>
   );
 }

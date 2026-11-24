@@ -1,6 +1,6 @@
 "use client";
 
-import { Save, Trash2 } from "lucide-react";
+import { ChevronDown, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   FormEvent,
@@ -228,10 +228,51 @@ export default function AdminProductEditor({
   }
 
   return (
-    <article className="glass-panel overflow-hidden">
+    <details className="glass-panel group overflow-hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 marker:content-none sm:px-6 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 className="truncate text-base font-semibold text-foreground">
+              {name || product.name}
+            </h2>
+
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                isActive
+                  ? "bg-emerald-500/10 text-emerald-700"
+                  : "bg-surface-soft text-muted"
+              }`}
+            >
+              {isActive
+                ? "\u0410\u043a\u0442\u0438\u0432\u043d\u0438\u0439"
+                : "\u041f\u0440\u0438\u0445\u043e\u0432\u0430\u043d\u0438\u0439"}
+            </span>
+          </div>
+
+          <p className="mt-1 truncate text-xs text-muted">
+            {product.categoryName} {"\u00b7"} /product/{product.slug}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-4">
+          <div className="hidden text-right sm:block">
+            <p className="text-sm font-semibold text-foreground">
+              {Number(price || product.price).toLocaleString("uk-UA")}{" "}
+              {"\u0433\u0440\u043d"}
+            </p>
+
+            <p className="text-xs text-muted">
+              {"\u0417\u0430\u043b\u0438\u0448\u043e\u043a"}: {totalStock}
+            </p>
+          </div>
+
+          <ChevronDown className="h-5 w-5 text-muted transition-transform duration-200 group-open:rotate-180" />
+        </div>
+      </summary>
+
       <form
         onSubmit={saveProduct}
-        className="space-y-7 p-6"
+        className="space-y-7 border-t border-border p-6"
       >
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
@@ -463,6 +504,6 @@ export default function AdminProductEditor({
           </button>
         </div>
       </form>
-    </article>
+    </details>
   );
 }

@@ -1,9 +1,5 @@
-import type {
-  ReactNode,
-} from "react";
-
+import type { ReactNode } from "react";
 import Link from "next/link";
-
 import {
   ChevronDown,
   SlidersHorizontal,
@@ -11,23 +7,18 @@ import {
 
 import CatalogToolbar from "@/components/CatalogToolbar";
 import ProductCard from "@/components/ProductCard";
-
 import { prisma } from "@/lib/prisma";
 import { getProductPhotos } from "@/lib/product-photos";
 
-import type {
-  Prisma,
-} from "../../../generated/prisma/client";
+import type { Prisma } from "../../../generated/prisma/client";
 
-export const dynamic =
-  "force-dynamic";
+export const dynamic = "force-dynamic";
 
 type CatalogPageProps = {
   searchParams: Promise<{
     q?: string;
     category?: string;
     size?: string;
-    color?: string;
     minPrice?: string;
     maxPrice?: string;
     sort?: string;
@@ -46,29 +37,6 @@ const sizes = [
   "M",
   "L",
   "XL",
-];
-
-const colors = [
-  {
-    value: "black",
-    label: "Чорний",
-    hex: "#1C1A20",
-  },
-  {
-    value: "white",
-    label: "Білий",
-    hex: "#F4F0E9",
-  },
-  {
-    value: "beige",
-    label: "Бежевий",
-    hex: "#D8C4B2",
-  },
-  {
-    value: "gray",
-    label: "Сірий",
-    hex: "#A8A2A9",
-  },
 ];
 
 function FilterSection({
@@ -108,9 +76,6 @@ export default async function CatalogPage({
   const size =
     params.size ?? "";
 
-  const color =
-    params.color ?? "";
-
   const sort =
     params.sort ?? "newest";
 
@@ -147,22 +112,6 @@ export default async function CatalogPage({
       parsedMaxPrice,
     );
 
-  const variantFilter:
-    Prisma.ProductVariantWhereInput =
-    {
-      ...(size
-        ? {
-            size,
-          }
-        : {}),
-
-      ...(color
-        ? {
-            color,
-          }
-        : {}),
-    };
-
   const where:
     Prisma.ProductWhereInput =
     {
@@ -197,11 +146,12 @@ export default async function CatalogPage({
           }
         : {}),
 
-      ...(size || color
+      ...(size
         ? {
             variants: {
-              some:
-                variantFilter,
+              some: {
+                size,
+              },
             },
           }
         : {}),
@@ -344,7 +294,10 @@ export default async function CatalogPage({
             value,
           ],
         ) => {
-          if (value) {
+          if (
+            value &&
+            key !== "color"
+          ) {
             result[key] =
               value;
           }
@@ -357,7 +310,6 @@ export default async function CatalogPage({
 
   return (
     <main className="relative overflow-hidden pb-20">
-
       <div className="page-shell relative z-10 py-6 sm:py-8">
         <div className="mb-7 sm:mb-9">
           <nav
@@ -383,9 +335,8 @@ export default async function CatalogPage({
           </h1>
 
           <p className="mt-3 max-w-xl text-base leading-7 text-muted">
-            Стильний жіночий одяг для
-            щоденних образів та особливих
-            моментів.
+            Стильний жіночий одяг для щоденних
+            образів та особливих моментів.
           </p>
         </div>
 
@@ -402,6 +353,7 @@ export default async function CatalogPage({
           >
             <span className="flex items-center gap-3 font-semibold text-foreground">
               <SlidersHorizontal className="h-5 w-5 text-accent-hover" />
+
               Фільтри
             </span>
 
@@ -568,64 +520,6 @@ export default async function CatalogPage({
                 </div>
               </FilterSection>
 
-              <FilterSection title="Колір">
-                <div className="flex flex-wrap gap-3">
-                  <label
-                    className="cursor-pointer"
-                    title="Усі кольори"
-                  >
-                    <input
-                      type="radio"
-                      name="color"
-                      value=""
-                      defaultChecked={
-                        !color
-                      }
-                      className="peer sr-only"
-                    />
-
-                    <span className="glass-control flex h-9 w-9 items-center justify-center text-sm text-muted transition hover:border-accent peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent">
-                      ×
-                    </span>
-                  </label>
-
-                  {colors.map(
-                    (item) => (
-                      <label
-                        key={
-                          item.value
-                        }
-                        className="cursor-pointer"
-                        title={
-                          item.label
-                        }
-                      >
-                        <input
-                          type="radio"
-                          name="color"
-                          value={
-                            item.value
-                          }
-                          defaultChecked={
-                            color ===
-                            item.value
-                          }
-                          className="peer sr-only"
-                        />
-
-                        <span
-                          className="block h-9 w-9 rounded-full border-2 border-transparent ring-1 ring-border-muted transition hover:scale-105 peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent"
-                          style={{
-                            backgroundColor:
-                              item.hex,
-                          }}
-                        />
-                      </label>
-                    ),
-                  )}
-                </div>
-              </FilterSection>
-
               <FilterSection title="Ціна">
                 <div className="grid grid-cols-2 gap-3">
                   <label>
@@ -725,8 +619,8 @@ export default async function CatalogPage({
 
                 <p className="mt-3 max-w-md text-sm leading-6 text-muted">
                   Спробуйте змінити параметри
-                  фільтрації або очистити
-                  пошуковий запит.
+                  фільтрації або очистити пошуковий
+                  запит.
                 </p>
 
                 <Link
