@@ -51,11 +51,11 @@ function getStatusLabel(
     string,
     string
   > = {
-    PENDING: "Нове",
+    NEW: "Нове",
     CONFIRMED: "Підтверджено",
     PROCESSING: "В обробці",
     SHIPPED: "Відправлено",
-    DELIVERED: "Доставлено",
+    COMPLETED: "Завершено",
     CANCELLED: "Скасовано",
   };
 
