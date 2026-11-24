@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LUNERA
 
-## Getting Started
+Навчальний програмний проєкт інтернет-магазину жіночого одягу, розроблений у межах комплексного курсового проєкту.
 
-First, run the development server:
+- Авторка: Жуковіна Анастасія Ігорівна
+- Група: ПЗПІ-23-6
+- Рік виконання: 2026
+
+![Головна сторінка LUNERA](public/images/lunera-hero.png)
+
+## Про проєкт
+
+LUNERA - повнофункціональний вебзастосунок для перегляду та придбання жіночого одягу. Система включає клієнтську частину магазину, особистий кабінет користувача та захищену адміністративну панель.
+
+## Основні можливості
+
+### Для покупця
+
+- каталог товарів із пошуком, фільтрацією та сортуванням;
+- перегляд сторінки товару, фотографій, варіантів, розмірів і залишків;
+- обране та кошик, прив'язані до конкретного користувача;
+- реєстрація і вхід через email та пароль або Google;
+- оформлення замовлення з контактними даними та адресою доставки;
+- особистий кабінет, історія замовлень і редагування профілю;
+- світла і темна теми, адаптивний інтерфейс.
+
+### Для адміністратора
+
+- огляд показників магазину;
+- керування товарами, фотографіями, цінами та залишками;
+- створення і редагування категорій;
+- перегляд замовлень і зміна їхніх статусів;
+- контроль доступу за роллю адміністратора.
+
+## Технології
+
+- Next.js 16, React 19, TypeScript;
+- Tailwind CSS 4;
+- PostgreSQL;
+- Prisma ORM 7;
+- Auth.js / NextAuth;
+- bcryptjs;
+- Lucide React та React Icons.
+
+## Вимоги до середовища
+
+- Node.js 20 або новіший;
+- npm;
+- PostgreSQL.
+
+## Локальний запуск
+
+1. Клонувати репозиторій і перейти до папки проєкту.
+2. Встановити залежності:
+
+```bash
+npm install
+```
+
+3. Створити локальний файл `.env` на основі `.env.example` і заповнити значення.
+4. Згенерувати Prisma Client:
+
+```bash
+npm run db:generate
+```
+
+5. Створити структуру бази даних:
+
+```bash
+npm run db:push
+```
+
+6. За потреби додати початкові категорії та товари:
+
+```bash
+npm run db:seed
+```
+
+7. Запустити застосунок:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Застосунок буде доступний за адресою [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Змінні середовища
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Змінна | Призначення |
+| --- | --- |
+| `DATABASE_URL` | Рядок підключення застосунку до PostgreSQL |
+| `DIRECT_URL` | Прямий рядок підключення для Prisma CLI та seed |
+| `AUTH_SECRET` | Секрет для підпису сесій Auth.js |
+| `AUTH_GOOGLE_ID` | Client ID застосунку Google OAuth |
+| `AUTH_GOOGLE_SECRET` | Client Secret застосунку Google OAuth |
 
-## Learn More
+Справжні значення змінних не повинні зберігатися у Git.
 
-To learn more about Next.js, take a look at the following resources:
+## Адміністративний доступ
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Після реєстрації користувача адміністративна роль встановлюється у базі даних значенням `ADMIN` у полі `role`. Облікові дані реального адміністратора не публікуються у репозиторії.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Перевірка якості
 
-## Deploy on Vercel
+```bash
+npm run lint
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Структура проєкту
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+src/app/                 сторінки та API-маршрути Next.js
+src/components/          інтерфейсні компоненти
+src/lib/                 допоміжні модулі та Prisma Client
+prisma/schema.prisma     модель бази даних
+prisma/seed.ts           початкові дані
+public/images/           статичні зображення
+submission/              матеріали комплексного курсового проєкту
+```
+
+## Матеріали ККП
+
+Назви й перелік матеріалів для подання наведені у папці `submission/2026_Б_ККП_ПЗПІ-23-6_Жуковіна_А_І`.
+
+## Авторка
+
+Жуковіна Анастасія Ігорівна, ПЗПІ-23-6, 2026.
