@@ -157,13 +157,6 @@ export default function Header() {
               />
             </Link>
 
-            <button
-              type="button"
-              className="glass-control flex h-11 items-center px-3 text-xs font-medium text-foreground transition hover:border-accent"
-            >
-              UA / EN
-            </button>
-
             <ThemeToggle />
           </div>
         </div>

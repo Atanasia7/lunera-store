@@ -10,7 +10,6 @@ export default function Footer() {
     <footer className="mt-20 border-t border-border-muted bg-background pb-6">
       <div className="page-shell pt-8">
         <div className="glass-panel grid gap-10 px-8 py-10 md:grid-cols-2 xl:grid-cols-4">
-          {/* Brand */}
           <div>
             <Link
               href="/"
@@ -25,7 +24,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Customer links */}
           <div>
             <h3 className="font-semibold text-foreground">
               Покупцям
@@ -54,7 +52,7 @@ export default function Footer() {
               </Link>
 
               <Link
-                href="/checkout"
+                href="/delivery"
                 className="transition hover:text-foreground"
               >
                 Доставка та оплата
@@ -62,28 +60,49 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* About */}
           <div>
             <h3 className="font-semibold text-foreground">
               Про Lunera
             </h3>
 
             <div className="mt-4 flex flex-col gap-3 text-sm text-muted">
-              <span>Про бренд</span>
-              <span>Контакти</span>
-              <span>Повернення</span>
-              <span>Політика конфіденційності</span>
+              <Link
+                href="/about"
+                className="transition hover:text-foreground"
+              >
+                Про бренд
+              </Link>
+
+              <Link
+                href="/contacts"
+                className="transition hover:text-foreground"
+              >
+                Контакти
+              </Link>
+
+              <Link
+                href="/returns"
+                className="transition hover:text-foreground"
+              >
+                Повернення
+              </Link>
+
+              <Link
+                href="/privacy"
+                className="transition hover:text-foreground"
+              >
+                Політика конфіденційності
+              </Link>
             </div>
           </div>
 
-          {/* Newsletter */}
           <div>
             <h3 className="font-semibold text-foreground">
               Підписатися на новини
             </h3>
 
             <p className="mt-3 text-sm leading-6 text-muted">
-              Нові колекції та оновлення Lunera.
+              Нові колекції, добірки та спеціальні пропозиції від Lunera.
             </p>
 
             <form className="glass-control mt-4 flex h-12 overflow-hidden">
@@ -97,12 +116,12 @@ export default function Footer() {
               <button
                 type="submit"
                 className="m-1 rounded-xl bg-accent px-5 text-sm font-medium text-white transition hover:bg-accent-hover"
+                aria-label="Підписатися"
               >
                 →
               </button>
             </form>
 
-            {/* Social icons */}
             <div className="mt-5 flex gap-2">
               <a
                 href="#"
@@ -134,14 +153,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom line */}
-        <div className="flex flex-col gap-2 px-4 py-5 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="px-4 py-5 text-xs text-muted">
           <p>
             © 2026 Lunera. Усі права захищені.
-          </p>
-
-          <p>
-            UA / EN
           </p>
         </div>
       </div>
