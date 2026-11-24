@@ -348,38 +348,15 @@ export default function CartPage() {
             </span>
           </div>
 
-          {/* Promo code */}
-          <div className="mt-7">
-            <label
-              htmlFor="promo"
-              className="text-xs text-muted"
-            >
-              Промокод
-            </label>
-
-            <div className="mt-2 flex gap-2">
-              <input
-                id="promo"
-                type="text"
-                placeholder="Введіть промокод"
-                className="glass-control h-11 min-w-0 flex-1 px-4 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent"
-              />
-
-              <button
-                type="button"
-                className="glass-control h-11 px-4 text-sm font-medium text-foreground transition hover:border-accent"
-              >
-                OK
-              </button>
-            </div>
-          </div>
+        
 
           <Link
-            href="/checkout"
-            className="mt-7 flex h-13 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent to-accent-hover px-6 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5"
-          >
-            Оформити замовлення →
-          </Link>
+  href="/checkout"
+  className="mt-7 flex h-13 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent to-accent-hover px-6 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5"
+  style={{ color: "#ffffff" }}
+>
+  Оформити замовлення →
+</Link>
 
           <p className="mt-4 text-center text-xs leading-5 text-muted">
             Остаточна сума буде підтверджена
