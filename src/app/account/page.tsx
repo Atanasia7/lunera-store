@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   Heart,
   Package,
+  ShieldCheck,
   ShoppingBag,
 } from "lucide-react";
 
@@ -215,6 +216,21 @@ export default async function AccountPage() {
             </div>
 
             <div className="mt-8 grid gap-3">
+              {user.role ===
+                "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm font-semibold text-accent-hover transition hover:border-accent"
+                >
+                  <ShieldCheck
+                    className="h-4 w-4"
+                    strokeWidth={1.7}
+                  />
+
+                  Панель адміністратора
+                </Link>
+              )}
+
               <Link
                 href="/favorites"
                 className="glass-control flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground transition hover:border-accent"
@@ -253,7 +269,8 @@ export default async function AccountPage() {
               </h2>
             </div>
 
-            {user.orders.length === 0 ? (
+            {user.orders.length ===
+            0 ? (
               <div className="mt-8 rounded-3xl border border-border bg-background/40 p-8 text-center">
                 <Package
                   className="mx-auto h-8 w-8 text-muted"

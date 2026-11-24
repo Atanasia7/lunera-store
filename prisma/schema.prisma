@@ -111,10 +111,22 @@ model Product {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   variants  ProductVariant[]
+  images ProductImage[]
   favorites Favorite[]
 
   @@index([categoryId])
   @@index([isActive])
+}
+
+model ProductImage {
+  id        String @id @default(uuid()) @db.Uuid
+  productId String @db.Uuid
+  url       String
+  position  Int
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, position])
 }
 
 model ProductVariant {
