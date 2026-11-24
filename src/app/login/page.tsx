@@ -13,6 +13,7 @@ import { signIn } from "next-auth/react";
 
 import {
   FormEvent,
+  Suspense,
   useState,
 } from "react";
 
@@ -22,6 +23,14 @@ import {
 } from "next/navigation";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
 
   const searchParams =
@@ -120,8 +129,6 @@ export default function LoginPage() {
   return (
     <main className="page-shell py-12">
       <section className="mx-auto grid max-w-5xl overflow-hidden rounded-[32px] border border-border bg-surface shadow-(--shadow) backdrop-blur-xl lg:grid-cols-[0.9fr_1.1fr]">
-        {/* Left side */}
-
         <div className="hidden bg-accent-soft p-10 lg:flex lg:flex-col lg:justify-between">
           <div>
             <Link
@@ -156,8 +163,6 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-
-        {/* Login form */}
 
         <div className="p-7 sm:p-10 lg:p-12">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-hover">
@@ -276,8 +281,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-
           <div className="my-7 flex items-center gap-4">
             <div className="h-px flex-1 bg-border-muted" />
 
@@ -287,8 +290,6 @@ export default function LoginPage() {
 
             <div className="h-px flex-1 bg-border-muted" />
           </div>
-
-          {/* Google */}
 
           <button
             type="button"
@@ -313,6 +314,14 @@ export default function LoginPage() {
           </p>
         </div>
       </section>
+    </main>
+  );
+}
+
+function LoginPageFallback() {
+  return (
+    <main className="page-shell py-12">
+      <section className="mx-auto min-h-150 max-w-5xl animate-pulse rounded-[32px] border border-border bg-surface shadow-(--shadow)" />
     </main>
   );
 }
